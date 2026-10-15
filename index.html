@@ -1527,6 +1527,16 @@ function sbVersion_(view) {
     return h.toString(36) + "." + s.length.toString(36) + "|" + twDate;
 }
 
+// 輕量版本標記：由資料庫算出一小段指紋（幾十個字元），輪詢時只問這個，沒變就不下載整份資料。
+// 資料庫函式還沒安裝或失敗時回傳 null，會退回舊做法（下載後比對）。
+async function sbServerVersion_() {
+    try {
+        const r = await sb.rpc("get_data_version");
+        if (r.error || !r.data || typeof r.data !== "string") return null;
+        return "s:" + r.data + "|" + new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+    } catch (_) { return null; }
+}
+
 /* ---------- action 實作 ---------- */
 async function sbLogin_(body) {
     const role = body.role;
@@ -1577,6 +1587,7 @@ async function sbLogin_(body) {
         return { status: "denied", message: "帳號或密碼錯誤" };
     }
 
+    const sv = await sbServerVersion_(); // 先取版本再取資料：中間若有變動，下次輪詢會多抓一次，不會漏
     const view = await sbFetchView_(profile);
     return {
         status: "success",
@@ -1586,17 +1597,18 @@ async function sbLogin_(body) {
         studentId: role === "student" ? profile.student_id : null,
         defaultTeacherPwd: role !== "student" && plain === "1234",
         data: view,
-        version: sbVersion_(view)
+        version: sv || sbVersion_(view)
     };
 }
 
 async function sbData_(body) {
     const profile = await sbProfile_();
+    const since = typeof body.since === "string" ? body.since : "";
+    const sv = await sbServerVersion_();
+    if (sv && since && since === sv) return { status: "success", unchanged: true, version: sv }; // 不必下載整份資料
     const view = await sbFetchView_(profile);
-    const version = sbVersion_(view);
-    if (typeof body.since === "string" && body.since && body.since === version) {
-        return { status: "success", unchanged: true, version: version };
-    }
+    const version = sv || sbVersion_(view);
+    if (!sv && since && since === version) return { status: "success", unchanged: true, version: version };
     return { status: "success", data: view, version: version };
 }
 

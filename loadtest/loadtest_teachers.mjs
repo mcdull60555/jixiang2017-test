@@ -10,6 +10,7 @@ const REVIEW_EVERY = +(process.env.REVIEW_EVERY_SECONDS || 8);   // 每幾秒審
 const BATCH = +(process.env.REVIEW_BATCH || 20);                 // 每次審核幾筆
 const POLL_EVERY = +(process.env.POLL_EVERY_SECONDS || 25);
 const RAMP_MS = +(process.env.RAMP_MS || 0);
+const SMART = (process.env.SMART || "1") !== "0";   // 1＝新版網頁做法（審核後只補抓動到的項目）；SMART=0 模擬舊版整班重讀
 
 const stats = {}; let bytesIn = 0;
 function rec(name, ms, ok, status) { (stats[name] ||= { t: [], err: 0, codes: {} }); stats[name].t.push(ms); if (!ok) stats[name].err++; stats[name].codes[status] = (stats[name].codes[status] || 0) + 1; }
@@ -66,14 +67,19 @@ async function teacher(k) {
     const ids = pending.splice(0, BATCH);
     if (ids.length) {
       await call("老師審核(RPC)", "/rest/v1/rpc/teacher_review", { method: "POST", body: { p_ids: ids, p_status: "已完成" }, token });
-      await refreshAfterAction(token);
+      if (SMART) {
+        await Promise.all([
+          call("審核後補抓動到的項目", `/rest/v1/tasks?select=*&id=in.(${ids.join(",")})`, { token }),
+          call("審核後補抓新紀錄", `/rest/v1/submit_log?select=*&order=at.asc&at=gte.${encodeURIComponent(new Date(Date.now() - 60000).toISOString())}&limit=1000`, { token }),
+        ]);
+      } else await refreshAfterAction(token);
     }
     await sleep(REVIEW_EVERY * 1000 * (0.7 + Math.random() * 0.6));
   }
 }
 
 function pct(a, p) { const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(s.length * p))]; }
-console.log(`開始：${T} 位老師同時登入並審核，持續 ${SECONDS} 秒（每約 ${REVIEW_EVERY} 秒審核 ${BATCH} 筆，每次審核後重讀全班資料）`);
+console.log(`開始：${T} 位老師同時登入並審核，持續 ${SECONDS} 秒（每約 ${REVIEW_EVERY} 秒審核 ${BATCH} 筆，${SMART ? '審核後只補抓動到的項目' : '每次審核後重讀全班資料'}）`);
 const t0 = Date.now();
 await Promise.all(Array.from({ length: T }, (_, i) => teacher(i + 1)));
 console.log(`\n結束，共 ${((Date.now() - t0) / 1000).toFixed(0)} 秒，下載資料量 ${(bytesIn / 1024 / 1024).toFixed(1)} MB\n`);

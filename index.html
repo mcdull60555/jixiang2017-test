@@ -1334,6 +1334,7 @@ const sbAnon = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
 
 let _sbToken = null;       // 目前登入的 access token
 let _sbPrevToken = null;   // 剛被新登入取代掉的舊 token（畫面程式切換身分時會對它呼叫 logout，要略過）
+let _sbCache = null;       // 最近一次完整讀到的項目與送審紀錄；審核後只補抓有變動的部分，不必整份重讀
 let _sbProfile = null;     // { id, role, student_id, class_id, login_id, display_name }
 
 sb.auth.onAuthStateChange((event, session) => {
@@ -1342,7 +1343,7 @@ sb.auth.onAuthStateChange((event, session) => {
         // access token 約每小時自動更新；讓畫面程式手上的 authToken 跟著更新
         try { authToken = session.access_token; sessionStorage.setItem("authToken", authToken); } catch (_) { /* 忽略 */ }
     }
-    if (!session) _sbProfile = null;
+    if (!session) { _sbProfile = null; _sbCache = null; }
 });
 
 /* ---------- 小工具 ---------- */
@@ -1510,6 +1511,7 @@ async function sbFetchView_(profile) {
         classes: sbCheck_(clRes, "讀取班級失敗").map(c => ({ id: c.id, name: c.name })),
         classStudents: sbCheck_(csRes, "讀取班級名單失敗").map(r => ({ classId: r.class_id, studentId: r.student_id }))
     };
+    _sbCache = { uid: profile.id, tasks: view.tasks, log: isTeacher ? sbLogRowsSafe_(logRes) : null };
     const myClass = view.classes.find(c => c.id === profile.class_id);
     view.me = { role: profile.role, loginId: profile.login_id || "", name: profile.display_name || "", classId: profile.class_id || "", className: myClass ? myClass.name : "", allowedGrades: Array.isArray(profile.allowed_grades) ? profile.allowed_grades : [] };
     if (isTeacher) {
@@ -1517,6 +1519,8 @@ async function sbFetchView_(profile) {
     }
     return view;
 }
+
+function sbLogRowsSafe_(logRes) { try { return sbCheck_(logRes, "").map(sbMapLog_).reverse(); } catch (_) { return null; } }
 
 // 資料版本標記：資料內容 + 台灣日期。內容沒變就讓輪詢回「沒變」，畫面不必重繪（跨日也會重新整理一次）
 function sbVersion_(view) {
@@ -1555,7 +1559,16 @@ async function sbLogin_(body) {
 
     const prevToken = _sbToken;
     // 密碼由 Edge Function「login」驗證（錯 5 次鎖 1 分鐘），通過後才拿到登入狀態
-    const gate = await sbAnon.functions.invoke("login", { body: { email: email, pin: plain } });
+    // 登入服務一瞬間太忙（5xx）或網路瞬斷時自動重試，最多 3 次；密碼錯誤、鎖定不會重試
+    let gate = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        gate = await sbAnon.functions.invoke("login", { body: { email: email, pin: plain } });
+        if (!gate.error && gate.data) break;
+        const st = gate.error && gate.error.context && gate.error.context.status;
+        const transient = !st || st >= 500;
+        if (!transient || attempt === 2) break;
+        await new Promise(r => setTimeout(r, 700 * (attempt + 1)));
+    }
     if (gate.error || !gate.data) throw sbErr_(gate.error || {}, "無法連線到資料庫");
     const g = gate.data;
     if (g.status === "locked") {
@@ -1679,23 +1692,54 @@ async function sbPatch_(body) {
         }
     }
 
-    // 回傳最新資料：跟原本 GAS 的 patch 回傳格式相同
-    const [taskRows, cbRes, logRes] = await Promise.all([
-        sbSelectAll_(() => sb.from("tasks").select("*").order("created_at").order("id")),
-        isTeacher ? sb.rpc("get_contact_book") : Promise.resolve(null),
-        isTeacher
-            ? sb.from("submit_log").select("*").gte("at", new Date(Date.now() - SB_LOG_KEEP_DAYS * 86400000).toISOString())
-                .order("at", { ascending: false }).limit(SB_LOG_MAX)
-            : Promise.resolve(null)
-    ]);
+    // 回傳最新資料：跟原本 GAS 的 patch 回傳格式相同。
+    // 只補抓「這次動到的項目」與「新增的送審紀錄」，合併進上次完整讀到的資料；沒有可用的快取時才整份重讀。
+    const touched = [...new Set(ops.flatMap(o => (Array.isArray(o.ids) ? o.ids.map(String) : [])))];
+    const usedReview = ops.some(o => o.op === "teacherReview");
+    const usedCb = ops.some(o => o.op === "cbSet" || o.op === "cbDelete");
+    const sinceIso = new Date(Date.now() - SB_LOG_KEEP_DAYS * 86400000).toISOString();
+    const cache = _sbCache && _sbCache.uid === profile.id ? _sbCache : null;
+    let tasks;
+    if (cache && touched.length <= 500) {
+        const byId = new Map(cache.tasks.map(t => [t.id, t]));
+        touched.forEach(id => byId.delete(id));
+        const fresh = [];
+        for (let k = 0; k < touched.length; k += 100) {
+            const rows = sbCheck_(await sb.from("tasks").select("*").in("id", touched.slice(k, k + 100)), "讀取項目失敗");
+            rows.forEach(r => fresh.push(sbMapTask_(r)));
+        }
+        // 被動到的項目放回原本位置附近：用建立順序無法取得就接在最後，畫面本來就會再排序
+        tasks = cache.tasks.filter(t => !touched.includes(t.id));
+        const origIndex = new Map(cache.tasks.map((t, idx) => [t.id, idx]));
+        fresh.forEach(t => { tasks.push(t); });
+        tasks.sort((x, y) => (origIndex.has(x.id) ? origIndex.get(x.id) : 1e9) - (origIndex.has(y.id) ? origIndex.get(y.id) : 1e9));
+    } else {
+        tasks = (await sbSelectAll_(() => sb.from("tasks").select("*").order("created_at").order("id"))).map(sbMapTask_);
+    }
+    let submitLog;
+    if (isTeacher && usedReview) {
+        if (cache && cache.log && cache.log.length) {
+            const lastAt = cache.log[cache.log.length - 1].at;
+            const rows = sbCheck_(await sb.from("submit_log").select("*").gte("at", lastAt).order("at", { ascending: true }).limit(SB_LOG_MAX), "讀取送審紀錄失敗").map(sbMapLog_);
+            const key = e => [e.at, e.taskId, e.action, e.studentId].join("|");
+            const seen = new Set(cache.log.map(key));
+            submitLog = cache.log.concat(rows.filter(e => !seen.has(key(e)))).filter(e => e.at >= sinceIso).slice(-SB_LOG_MAX);
+        } else {
+            const rows = sbCheck_(await sb.from("submit_log").select("*").gte("at", sinceIso).order("at", { ascending: false }).limit(SB_LOG_MAX), "讀取送審紀錄失敗");
+            submitLog = rows.map(sbMapLog_).reverse();
+        }
+    }
+    let contactBook;
+    if (isTeacher && usedCb) contactBook = sbCheck_(await sb.rpc("get_contact_book"), "讀取聯絡簿失敗").map(sbMapCb_);
+    if (cache) { cache.tasks = tasks; if (submitLog) cache.log = submitLog; }
     return {
         status: "success",
         message: "逐筆更新成功",
         changed: changed,
         skipped: skipped,
-        tasks: taskRows.map(sbMapTask_),
-        contactBook: cbRes ? sbCheck_(cbRes, "讀取聯絡簿失敗").map(sbMapCb_) : undefined,
-        submitLog: logRes ? sbCheck_(logRes, "讀取送審紀錄失敗").map(sbMapLog_).reverse() : undefined,
+        tasks: tasks,
+        contactBook: contactBook,
+        submitLog: submitLog,
         savedAt: new Date().toISOString()
     };
 }
@@ -1842,6 +1886,7 @@ async function sbSave_(body) {
         if (error) throw sbErr_(error, "老師密碼更新失敗");
     }
 
+    _sbCache = null; // 整份儲存後，快取作廢，下次再完整讀取
     return {
         status: "success",
         message: "資料儲存成功",

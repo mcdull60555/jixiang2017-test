@@ -156,7 +156,7 @@
 
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
             <h3 class="font-bold text-slate-800">老師帳號</h3>
-            <div id="adminTeacherList" class="space-y-2"></div>
+            <div id="adminTeacherList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
             <div class="border-t pt-3 grid grid-cols-1 sm:grid-cols-5 gap-2 text-sm">
                 <input id="admNewTLogin" placeholder="帳號 t_開頭，如 t_wang" class="border border-slate-300 rounded-lg px-2 py-1.5">
                 <input id="admNewTName" placeholder="老師姓名" class="border border-slate-300 rounded-lg px-2 py-1.5">
@@ -1004,6 +1004,22 @@
             <div class="flex gap-2">
                 <button onclick="closeModal('addExistingModal')" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2 rounded-xl text-sm">取消</button>
                 <button onclick="confirmAddExisting_()" class="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-xl text-sm">加入所選</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理者：編輯老師 -->
+    <div id="editTeacherModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-3 border border-slate-200 text-sm">
+            <h3 class="font-bold text-slate-800">編輯老師</h3>
+            <div class="text-xs text-slate-500">帳號：<span id="editTeacherLogin" class="font-mono"></span>（帳號不能修改）</div>
+            <label class="block space-y-1"><span class="text-xs font-bold text-slate-600">老師姓名</span>
+                <input id="editTeacherName" class="border border-slate-300 rounded-lg px-3 py-2 w-full" onkeydown="if(event.key==='Enter') adminSaveTeacher_()"></label>
+            <label class="block space-y-1"><span class="text-xs font-bold text-slate-600">負責班級</span>
+                <select id="editTeacherClass" class="border border-slate-300 rounded-lg px-3 py-2 w-full"></select></label>
+            <div class="flex gap-2 pt-1">
+                <button onclick="closeModal('editTeacherModal')" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2 rounded-xl text-sm">取消</button>
+                <button onclick="adminSaveTeacher_()" class="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-xl text-sm">儲存</button>
             </div>
         </div>
     </div>
@@ -5508,7 +5524,7 @@ function prepTeacherLogin_(adminMode) {
     const sel = document.getElementById("teacherLoginSelect");
     const teachers = (window.appData && window.appData.teachers) || [];
     sel.innerHTML = teachers.length
-        ? teachers.map(t => `<option value="${_esc(t.loginId)}">${_esc(t.name)}${t.className ? "（" + _esc(t.className) + "）" : ""}</option>`).join("")
+        ? teachers.map(t => `<option value="${_esc(t.loginId)}">${_esc(t.loginId)}</option>`).join("")
         : `<option value="">（還沒有老師帳號）</option>`;
     document.getElementById("teacherSelectWrap").classList.toggle("hidden", !!adminMode);
     document.getElementById("teacherLoginTitle").innerText = adminMode ? "管理者登入" : "老師登入";
@@ -5673,24 +5689,36 @@ function renderAdmin_() {
     const a = window.appData;
     const classes = a.classes || [];
     const classOpts = (sel) => `<option value="">（未分配）</option>` + classes.map(c => `<option value="${_esc(c.id)}" ${c.id === sel ? "selected" : ""}>${_esc(c.name)}</option>`).join("");
-    document.getElementById("adminTeacherList").innerHTML = (a.teachers || []).map(t => `
-        <div class="border rounded-lg p-2 text-sm bg-white space-y-2" data-tid="${_esc(t.id)}" draggable="true">
-            <div class="flex items-center gap-1 min-w-0">
-                <span class="cursor-grab text-slate-400 select-none px-1" title="拖曳排序">☰</span>
-                <button onclick="adminMove_(this,'[data-tid]',-1)" class="text-slate-500 px-2 py-1" title="上移">▲</button><button onclick="adminMove_(this,'[data-tid]',1)" class="text-slate-500 px-2 py-1" title="下移">▼</button>
-                <span class="font-mono text-xs text-slate-500 truncate min-w-0 ml-1">${_esc(t.loginId)}</span>
+    document.getElementById("adminTeacherList").innerHTML = (a.teachers || []).map(t => {
+        const grades = t.allowedGrades || [];
+        const cls = classes.find(c => c.id === t.classId);
+        return `
+        <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition space-y-3 text-sm" data-tid="${_esc(t.id)}" draggable="true">
+            <div class="flex justify-between items-start gap-2">
+                <div class="flex items-center gap-3 min-w-0">
+                    <span class="cursor-grab text-slate-300 hover:text-slate-500 select-none" title="拖曳排序">☰</span>
+                    <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-xl shrink-0">👩‍🏫</div>
+                    <div class="min-w-0">
+                        <h4 class="font-bold text-slate-800 text-sm sm:text-base truncate">${_esc(t.name || "（未命名）")}</h4>
+                        <p class="text-xs text-slate-400 truncate"><span class="font-mono">${_esc(t.loginId)}</span> · ${cls ? _esc(cls.name) : "未分配班級"}</p>
+                    </div>
+                </div>
+                <div class="flex shrink-0 text-slate-400">
+                    <button onclick="adminMove_(this,'[data-tid]',-1)" class="px-1.5 py-1 hover:text-indigo-600" title="往前移">▲</button>
+                    <button onclick="adminMove_(this,'[data-tid]',1)" class="px-1.5 py-1 hover:text-indigo-600" title="往後移">▼</button>
+                </div>
             </div>
-            <div class="flex flex-col sm:flex-row gap-2">
-                <input value="${_esc(t.name)}" draggable="false" placeholder="老師姓名" class="tn border border-slate-300 rounded px-2 py-1.5 w-full sm:w-40 min-w-0">
-                <select class="tc border border-slate-300 rounded px-2 py-1.5 w-full sm:w-40 min-w-0">${classOpts(t.classId)}</select>
-                <button onclick="adminEditGrades_(this)" class="bg-teal-600 text-white rounded px-2 py-1.5 font-bold w-full sm:w-auto text-left sm:text-center truncate" title="限制這位老師能管理的年級">年級限制：${(t.allowedGrades || []).length ? _esc(t.allowedGrades.join("、")) : "不限"}</button>
+            <div class="flex flex-wrap items-center gap-1 text-xs">
+                <span class="text-slate-500 font-bold mr-1">可管理年級</span>
+                ${grades.length ? grades.map(g => `<span class="bg-teal-50 text-teal-700 font-bold px-2 py-0.5 rounded-full">${_esc(g)}</span>`).join("") : `<span class="bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-full">不限</span>`}
             </div>
-            <div class="grid grid-cols-3 sm:flex gap-2">
-                <button onclick="adminSaveTeacher_(this)" class="bg-indigo-600 text-white rounded px-2 py-1.5 font-bold whitespace-nowrap">儲存</button>
-                <button onclick="adminResetPin_(this)" class="bg-amber-500 text-white rounded px-2 py-1.5 font-bold whitespace-nowrap">重設密碼</button>
-                <button onclick="adminDelTeacher_(this)" class="bg-rose-600 text-white rounded px-2 py-1.5 font-bold whitespace-nowrap">刪除</button>
+            <div class="flex flex-wrap justify-end gap-x-3 gap-y-1 text-xs pt-2 border-t border-slate-100">
+                <button onclick="adminOpenEditTeacher_(this)" class="text-indigo-600 font-bold hover:underline">編輯</button>
+                <button onclick="adminEditGrades_(this)" class="text-teal-600 font-bold hover:underline">年級限制</button>
+                <button onclick="adminResetPin_(this)" class="text-amber-600 font-bold hover:underline">重設密碼</button>
+                <button onclick="adminDelTeacher_(this)" class="text-rose-600 font-bold hover:underline">刪除</button>
             </div>
-        `).join("") || `<div class="text-slate-400 text-sm">還沒有老師帳號</div>`;
+        </div>`; }).join("") || `<div class="text-slate-400 text-sm">還沒有老師帳號</div>`;
     document.getElementById("admNewTClass").innerHTML = classOpts("");
     document.getElementById("adminClassList").innerHTML = classes.map(c => `
         <div class="flex items-center gap-1 sm:gap-2 border rounded-lg p-2 text-sm bg-white min-w-0" data-cid="${_esc(c.id)}" draggable="true">
@@ -5731,8 +5759,9 @@ function adminMove_(btn, sel, dir) {
         const over = e.target.closest && e.target.closest("[data-tid],[data-cid]");
         if (over && over !== dragEl && over.parentElement === dragEl.parentElement) {
             e.preventDefault();
-            const rect = over.getBoundingClientRect();
-            over.parentElement.insertBefore(dragEl, (e.clientY - rect.top) < rect.height / 2 ? over : over.nextSibling);
+            const sibs = [...over.parentElement.children];
+            const after = sibs.indexOf(dragEl) < sibs.indexOf(over);
+            over.parentElement.insertBefore(dragEl, after ? over.nextSibling : over);
         }
     });
     document.addEventListener("drop", e => { if (dragEl) e.preventDefault(); });
@@ -5763,7 +5792,21 @@ function adminCreateTeacher_() {
     adminDo_("createTeacher", { loginId: g("admNewTLogin"), name: g("admNewTName"), pin: g("admNewTPin"), classId: g("admNewTClass") }, "老師已新增")
         .then(ok => { if (ok) { adminClearInputs_(["admNewTLogin", "admNewTName", "admNewTPin"]); document.getElementById("admNewTClass").value = ""; } });
 }
-function adminSaveTeacher_(b) { const r = _row(b, "[data-tid]"); adminDo_("updateTeacher", { id: r.dataset.tid, name: r.querySelector(".tn").value.trim(), classId: r.querySelector(".tc").value }, "已儲存"); }
+let _editTeacherTid = null;
+function adminOpenEditTeacher_(b) {
+    const r = _row(b, "[data-tid]"); _editTeacherTid = r.dataset.tid;
+    const t = (window.appData.teachers || []).find(x => x.id === _editTeacherTid) || {};
+    document.getElementById("editTeacherLogin").innerText = t.loginId || "";
+    document.getElementById("editTeacherName").value = t.name || "";
+    document.getElementById("editTeacherClass").innerHTML = `<option value="">（未分配）</option>` + (window.appData.classes || []).map(c => `<option value="${_esc(c.id)}" ${c.id === t.classId ? "selected" : ""}>${_esc(c.name)}</option>`).join("");
+    openModal("editTeacherModal");
+}
+function adminSaveTeacher_() {
+    const name = document.getElementById("editTeacherName").value.trim();
+    if (!name) { alert("⚠️ 請輸入老師姓名"); return; }
+    closeModal("editTeacherModal");
+    adminDo_("updateTeacher", { id: _editTeacherTid, name: name, classId: document.getElementById("editTeacherClass").value }, "已儲存");
+}
 let _resetPinTid = null;
 function adminResetPin_(b) {
     const r = _row(b, "[data-tid]"); _resetPinTid = r.dataset.tid;

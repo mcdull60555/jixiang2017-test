@@ -4,7 +4,7 @@ name: Supabase 防休眠
 
 on:
   schedule:
-    - cron: "17 2 */2 * *"   # 每 2 天，台灣時間上午 10:17
+    - cron: "30 0 */2 * *"   # 每 2 天，台灣時間上午 8:30（UTC 00:30）
   workflow_dispatch:          # 也可以在 Actions 頁面手動按 Run
 
 permissions:

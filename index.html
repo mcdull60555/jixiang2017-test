@@ -155,27 +155,19 @@
         </div>
 
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-            <h3 class="font-bold text-slate-800">老師帳號</h3>
-            <div id="adminTeacherList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
-            <div class="border-t pt-3 grid grid-cols-1 sm:grid-cols-5 gap-2 text-sm">
-                <input id="admNewTLogin" placeholder="帳號 t_開頭，如 t_wang" class="border border-slate-300 rounded-lg px-2 py-1.5">
-                <input id="admNewTName" placeholder="老師姓名" class="border border-slate-300 rounded-lg px-2 py-1.5">
-                <select id="admNewTClass" class="border border-slate-300 rounded-lg px-2 py-1.5"></select>
-                <div class="relative min-w-0">
-                    <input id="admNewTPin" type="password" autocomplete="new-password" placeholder="密碼（4～64 字元）" class="border border-slate-300 rounded-lg pl-2 pr-9 py-1.5 w-full min-w-0">
-                    <button type="button" onclick="togglePwVis_('admNewTPin', this)" class="absolute inset-y-0 right-0 px-2.5 text-slate-500 hover:text-slate-700" title="顯示密碼" aria-label="顯示密碼"><i class="fa-solid fa-eye"></i></button>
-                </div>
-                <button onclick="adminCreateTeacher_()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg px-3 py-1.5">新增老師</button>
+            <div class="flex items-center justify-between gap-2">
+                <h3 class="font-bold text-slate-800">老師帳號</h3>
+                <button onclick="adminOpenNewTeacher_()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg px-3 py-1.5 text-sm whitespace-nowrap"><i class="fa-solid fa-plus mr-1"></i>新增老師</button>
             </div>
+            <div id="adminTeacherList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
         </div>
 
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-            <h3 class="font-bold text-slate-800">班級</h3>
-            <div id="adminClassList" class="space-y-2"></div>
-            <div class="border-t pt-3 flex gap-2 text-sm">
-                <input id="admNewClass" placeholder="新班級名稱，如 英文班" class="border border-slate-300 rounded-lg px-2 py-1.5 flex-1 min-w-0 w-0">
-                <button onclick="adminAddClass_()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg px-3 py-1.5 whitespace-nowrap shrink-0">新增班級</button>
+            <div class="flex items-center justify-between gap-2">
+                <h3 class="font-bold text-slate-800">班級</h3>
+                <button onclick="adminOpenNewClass_()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg px-3 py-1.5 text-sm whitespace-nowrap"><i class="fa-solid fa-plus mr-1"></i>新增班級</button>
             </div>
+            <div id="adminClassList" class="space-y-2"></div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1004,6 +996,41 @@
             <div class="flex gap-2">
                 <button onclick="closeModal('addExistingModal')" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2 rounded-xl text-sm">取消</button>
                 <button onclick="confirmAddExisting_()" class="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-xl text-sm">加入所選</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理者：新增老師 -->
+    <div id="newTeacherModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-3 border border-slate-200 text-sm">
+            <h3 class="font-bold text-slate-800">新增老師</h3>
+            <label class="block space-y-1"><span class="text-xs font-bold text-slate-600">老師帳號（登入用，t_ 開頭，如 t_wang）</span>
+                <input id="admNewTLogin" autocomplete="off" placeholder="t_wang" class="border border-slate-300 rounded-lg px-3 py-2 w-full font-mono"></label>
+            <label class="block space-y-1"><span class="text-xs font-bold text-slate-600">老師姓名</span>
+                <input id="admNewTName" placeholder="王老師" class="border border-slate-300 rounded-lg px-3 py-2 w-full"></label>
+            <label class="block space-y-1"><span class="text-xs font-bold text-slate-600">負責班級</span>
+                <select id="admNewTClass" class="border border-slate-300 rounded-lg px-3 py-2 w-full"></select></label>
+            <label class="block space-y-1"><span class="text-xs font-bold text-slate-600">登入密碼（4～64 字元）</span>
+                <span class="relative block">
+                    <input id="admNewTPin" type="password" autocomplete="new-password" onkeydown="if(event.key==='Enter') adminCreateTeacher_()" class="border border-slate-300 rounded-lg pl-3 pr-10 py-2 w-full">
+                    <button type="button" onclick="togglePwVis_('admNewTPin', this)" class="absolute inset-y-0 right-0 px-3 text-slate-500 hover:text-slate-700" title="顯示密碼" aria-label="顯示密碼"><i class="fa-solid fa-eye"></i></button>
+                </span></label>
+            <div class="flex gap-2 pt-1">
+                <button onclick="closeModal('newTeacherModal')" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2 rounded-xl text-sm">取消</button>
+                <button onclick="adminCreateTeacher_()" class="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-xl text-sm">新增</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理者：新增班級 -->
+    <div id="newClassModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-3 border border-slate-200 text-sm">
+            <h3 class="font-bold text-slate-800">新增班級</h3>
+            <label class="block space-y-1"><span class="text-xs font-bold text-slate-600">班級名稱</span>
+                <input id="admNewClass" placeholder="如 英文班" onkeydown="if(event.key==='Enter') adminAddClass_()" class="border border-slate-300 rounded-lg px-3 py-2 w-full"></label>
+            <div class="flex gap-2 pt-1">
+                <button onclick="closeModal('newClassModal')" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2 rounded-xl text-sm">取消</button>
+                <button onclick="adminAddClass_()" class="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-xl text-sm">新增</button>
             </div>
         </div>
     </div>
@@ -5685,6 +5712,13 @@ async function adminDo_(op, args, okText, quiet) {
     if (!(quiet && ok)) admMsg_(msg, ok); // 排序成功不跳窗；失敗仍會提示
     return ok;
 }
+/* 老師頭像＝可管理年級的頭像；有兩個以上年級時隨機挑一個（依老師固定，重新整理不會一直換）；不限年級用預設頭像 */
+function teacherAvatar_(t, gradeAvatars) {
+    const list = (t.allowedGrades || []).map(g => gradeAvatars[g]).filter(Boolean);
+    if (!list.length) return "👩‍🏫";
+    let h = 0; for (const ch of String(t.id || t.loginId || "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return list[h % list.length];
+}
 function renderAdmin_() {
     const a = window.appData;
     const classes = a.classes || [];
@@ -5692,12 +5726,13 @@ function renderAdmin_() {
     document.getElementById("adminTeacherList").innerHTML = (a.teachers || []).map(t => {
         const grades = t.allowedGrades || [];
         const cls = classes.find(c => c.id === t.classId);
+        const avatar = teacherAvatar_(t, a.gradeAvatars || {});
         return `
         <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition space-y-3 text-sm" data-tid="${_esc(t.id)}" draggable="true">
             <div class="flex justify-between items-start gap-2">
                 <div class="flex items-center gap-3 min-w-0">
                     <span class="cursor-grab text-slate-300 hover:text-slate-500 select-none" title="拖曳排序">☰</span>
-                    <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-xl shrink-0">👩‍🏫</div>
+                    <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-xl shrink-0">${avatar}</div>
                     <div class="min-w-0">
                         <h4 class="font-bold text-slate-800 text-sm sm:text-base truncate">${_esc(t.name || "（未命名）")}</h4>
                         <p class="text-xs text-slate-400 truncate"><span class="font-mono">${_esc(t.loginId)}</span> · ${cls ? _esc(cls.name) : "未分配班級"}</p>
@@ -5719,7 +5754,6 @@ function renderAdmin_() {
                 <button onclick="adminDelTeacher_(this)" class="text-rose-600 font-bold hover:underline">刪除</button>
             </div>
         </div>`; }).join("") || `<div class="text-slate-400 text-sm">還沒有老師帳號</div>`;
-    document.getElementById("admNewTClass").innerHTML = classOpts("");
     document.getElementById("adminClassList").innerHTML = classes.map(c => `
         <div class="flex items-center gap-1 sm:gap-2 border rounded-lg p-2 text-sm bg-white min-w-0" data-cid="${_esc(c.id)}" draggable="true">
             <span class="cursor-grab text-slate-400 select-none px-1 shrink-0" title="拖曳排序">☰</span>
@@ -5787,10 +5821,23 @@ function adminClearInputs_(ids) {
     ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
     ["admNewTPin", "admMyPin"].forEach(id => { if (ids.includes(id)) togglePwVis_(id, null, true); });
 }
+function adminOpenNewTeacher_() {
+    adminClearInputs_(["admNewTLogin", "admNewTName", "admNewTPin"]);
+    const sel = document.getElementById("admNewTClass");
+    sel.innerHTML = `<option value="">（未分配）</option>` + (window.appData.classes || []).map(c => `<option value="${_esc(c.id)}">${_esc(c.name)}</option>`).join("");
+    openModal("newTeacherModal");
+    setTimeout(() => document.getElementById("admNewTLogin").focus(), 50);
+}
+function adminOpenNewClass_() {
+    adminClearInputs_(["admNewClass"]);
+    openModal("newClassModal");
+    setTimeout(() => document.getElementById("admNewClass").focus(), 50);
+}
 function adminCreateTeacher_() {
     const g = id => document.getElementById(id).value.trim();
+    if (!g("admNewTLogin") || !g("admNewTName") || !g("admNewTPin")) { alert("⚠️ 請填寫老師帳號、姓名與密碼"); return; }
     adminDo_("createTeacher", { loginId: g("admNewTLogin"), name: g("admNewTName"), pin: g("admNewTPin"), classId: g("admNewTClass") }, "老師已新增")
-        .then(ok => { if (ok) { adminClearInputs_(["admNewTLogin", "admNewTName", "admNewTPin"]); document.getElementById("admNewTClass").value = ""; } });
+        .then(ok => { if (ok) { closeModal("newTeacherModal"); adminClearInputs_(["admNewTLogin", "admNewTName", "admNewTPin"]); } });
 }
 let _editTeacherTid = null;
 function adminOpenEditTeacher_(b) {
@@ -5844,7 +5891,7 @@ function saveGradeLock_() {
     closeModal("gradeLockModal");
     adminDo_("setTeacherGrades", { id: _gradeEditTid, grades: grades }, grades.length ? "已限制只能管理：" + grades.join("、") : "已解除限制（可管理所有年級）");
 }
-function adminAddClass_() { const n = document.getElementById("admNewClass").value.trim(); if (n) adminDo_("addClass", { name: n }, "班級已新增").then(ok => { if (ok) adminClearInputs_(["admNewClass"]); }); }
+function adminAddClass_() { const n = document.getElementById("admNewClass").value.trim(); if (!n) { alert("⚠️ 請輸入班級名稱"); return; } adminDo_("addClass", { name: n }, "班級已新增").then(ok => { if (ok) { closeModal("newClassModal"); adminClearInputs_(["admNewClass"]); } }); }
 function adminRenameClass_(b) { const r = _row(b, "[data-cid]"); adminDo_("renameClass", { id: r.dataset.cid, name: r.querySelector(".cn").value.trim() }, "班級已改名"); }
 function adminDelClass_(b) { const r = _row(b, "[data-cid]"); if (confirm("確定刪除這個班級？該班的作業、聯絡簿與學生名單會一併刪除（學生帳號本身保留）。")) adminDo_("deleteClass", { id: r.dataset.cid }, "班級已刪除"); }
 function adminAddGrade_() { const n = document.getElementById("admNewGrade").value.trim(); if (n) adminDo_("addGrade", { name: n, avatar: document.getElementById("admNewGradeAvatar").value.trim() }, "年級已新增").then(ok => { if (ok) adminClearInputs_(["admNewGrade"]); }); }

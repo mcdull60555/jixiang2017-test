@@ -700,8 +700,8 @@
 
         <!-- ==================== 家長 / 學生端介面 ==================== -->
         <div id="studentView" class="hidden space-y-4 sm:space-y-6">
-            <div id="studentNotLoggedInCard" class="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 text-center max-w-md mx-auto my-6 sm:my-12 shadow-sm space-y-4">
-                <img src="logo-full.jpg" alt="基翔文理補習班" class="w-full max-w-[20rem] sm:max-w-[24rem] mx-auto -mt-2">
+            <div id="studentNotLoggedInCard" class="bg-white rounded-2xl border border-slate-200 px-6 pb-6 pt-3 sm:px-8 sm:pb-8 sm:pt-4 text-center max-w-md mx-auto my-3 sm:my-6 shadow-sm space-y-4">
+                <img src="logo-full.jpg" alt="基翔文理補習班" class="w-full max-w-[20rem] sm:max-w-[24rem] mx-auto">
                 <div class="flex items-stretch justify-center text-[#0A60C4] max-w-[20rem] sm:max-w-[24rem] mx-auto">
                     <div class="flex-1 flex flex-col items-center gap-1.5 py-1"><i class="fa-solid fa-book-open text-2xl sm:text-3xl"></i><span class="text-xs sm:text-sm font-bold">進度管理</span></div>
                     <div class="w-px bg-[#0A60C4]/40 my-1"></div>
@@ -709,11 +709,11 @@
                     <div class="w-px bg-[#0A60C4]/40 my-1"></div>
                     <div class="flex-1 flex flex-col items-center gap-1.5 py-1"><i class="fa-solid fa-chart-column text-2xl sm:text-3xl"></i><span class="text-xs sm:text-sm font-bold">學習成長</span></div>
                 </div>
-                <h2 class="text-lg sm:text-xl font-bold text-slate-800">請先選擇學生並驗證登入</h2>
-                <p class="text-xs text-slate-500">家長與學生請選擇姓名並輸入 4 位數密碼登入檢視個人進度。</p>
                 <button onclick="openStudentLoginModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-3 rounded-xl text-sm transition shadow-md w-full">
                     選擇學生並登入
                 </button>
+                <h2 class="text-lg sm:text-xl font-bold text-slate-800">請先選擇學生並驗證登入</h2>
+                <p class="text-xs text-slate-500">家長與學生請選擇姓名並輸入 4 位數密碼登入檢視個人進度。</p>
             </div>
 
             <div id="studentDashboard" class="hidden space-y-4 sm:space-y-6">
@@ -6297,6 +6297,28 @@ async function saveBatchStudents() {
     catch (e) { alert("⚠️ " + (e.message || e)); }
     finally { hideBusy_(); }
 }
+
+/* ----- 右上角登入資訊：放大，登入後換成醒目的顏色、名字放大 ----- */
+function styleUserInfo_() {
+    const box = document.getElementById("userInfo"), badge = document.getElementById("roleBadge"), name = document.getElementById("currentUserName");
+    if (!box || !badge || !name) return;
+    const me = (window.appData && window.appData.me) || {};
+    const loggedIn = !!(isTeacherLoggedIn || loggedInStudentId);
+    const role = !loggedIn ? "none" : (isTeacherLoggedIn ? (me.role === "admin" ? "admin" : (currentRole === "teacher" ? "teacher" : "preview")) : "student");
+    box.className = "hidden sm:flex items-center px-3.5 py-1.5 rounded-full text-sm transition " +
+        (loggedIn ? "bg-amber-300 text-indigo-950 border-2 border-white shadow-md" : "bg-white/15 text-white border border-white/40");
+    const badgeColor = { none: "bg-white/25 text-white", teacher: "bg-indigo-700 text-white", preview: "bg-purple-600 text-white", student: "bg-emerald-600 text-white", admin: "bg-rose-600 text-white" }[role];
+    badge.className = "px-2.5 py-0.5 rounded-full font-bold mr-2 text-xs whitespace-nowrap " + badgeColor;
+    name.className = loggedIn ? "text-base font-extrabold whitespace-nowrap" : "font-bold whitespace-nowrap";
+}
+(function wrapRenderRoleView_() {
+    if (typeof renderRoleView !== "function" || renderRoleView._styled) return;
+    const orig = renderRoleView;
+    renderRoleView = function () { const r = orig.apply(this, arguments); styleUserInfo_(); return r; };
+    renderRoleView._styled = true;
+    window.renderRoleView = renderRoleView;
+    styleUserInfo_();
+})();
 
     </script>
 </body>

@@ -999,6 +999,22 @@
         </div>
     </div>
 
+    <!-- 管理者：重設老師密碼 -->
+    <div id="resetPinModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-3 border border-slate-200">
+            <h3 id="resetPinTitle" class="font-bold text-slate-800">重設老師密碼</h3>
+            <div class="relative">
+                <input id="resetPinInput" type="password" autocomplete="new-password" placeholder="新密碼（4～64 字元）" onkeydown="if(event.key==='Enter') saveResetPin_()" class="border border-slate-300 rounded-lg pl-3 pr-10 py-2 w-full text-sm">
+                <button type="button" onclick="togglePwVis_('resetPinInput', this)" class="absolute inset-y-0 right-0 px-3 text-slate-500 hover:text-slate-700" title="顯示密碼" aria-label="顯示密碼"><i class="fa-solid fa-eye"></i></button>
+            </div>
+            <p id="resetPinError" class="hidden text-xs text-rose-600 font-bold"></p>
+            <div class="flex gap-2">
+                <button onclick="closeModal('resetPinModal')" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2 rounded-xl text-sm">取消</button>
+                <button onclick="saveResetPin_()" class="flex-1 bg-amber-500 text-white font-bold py-2 rounded-xl text-sm">重設密碼</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 管理者：限制老師可管理的年級 -->
     <div id="gradeLockModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
         <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-3 border border-slate-200 max-h-[90vh] flex flex-col">
@@ -5671,7 +5687,24 @@ function adminCreateTeacher_() {
         .then(ok => { if (ok) { adminClearInputs_(["admNewTLogin", "admNewTName", "admNewTPin"]); document.getElementById("admNewTClass").value = ""; } });
 }
 function adminSaveTeacher_(b) { const r = _row(b, "[data-tid]"); adminDo_("updateTeacher", { id: r.dataset.tid, name: r.querySelector(".tn").value.trim(), classId: r.querySelector(".tc").value }, "已儲存"); }
-function adminResetPin_(b) { const r = _row(b, "[data-tid]"); const p = prompt("輸入這位老師的新密碼（4～64 字元）"); if (p) adminDo_("setTeacherPin", { id: r.dataset.tid, pin: p }, "密碼已重設"); }
+let _resetPinTid = null;
+function adminResetPin_(b) {
+    const r = _row(b, "[data-tid]"); _resetPinTid = r.dataset.tid;
+    const t = (window.appData.teachers || []).find(x => x.id === _resetPinTid) || {};
+    document.getElementById("resetPinTitle").innerText = "重設「" + (t.name || t.loginId || "") + "」的密碼";
+    document.getElementById("resetPinInput").value = "";
+    togglePwVis_("resetPinInput", null, true);
+    document.getElementById("resetPinError").classList.add("hidden");
+    openModal("resetPinModal");
+    setTimeout(() => document.getElementById("resetPinInput").focus(), 50);
+}
+function saveResetPin_() {
+    const p = document.getElementById("resetPinInput").value;
+    const err = document.getElementById("resetPinError");
+    if (p.length < 4 || p.length > 64) { err.innerText = "密碼長度要 4～64 個字元"; err.classList.remove("hidden"); return; }
+    closeModal("resetPinModal");
+    adminDo_("setTeacherPin", { id: _resetPinTid, pin: p }, "密碼已重設").then(() => { document.getElementById("resetPinInput").value = ""; togglePwVis_("resetPinInput", null, true); });
+}
 function adminDelTeacher_(b) { const r = _row(b, "[data-tid]"); if (confirm("確定刪除這位老師帳號？（不會刪除學生與班級資料）")) adminDo_("deleteTeacher", { id: r.dataset.tid }, "老師已刪除"); }
 function adminSetGradeAvatar_(sel) {
     if (!confirm("要把「" + sel.dataset.n + "」的頭像換成 " + sel.value + "？\n該年級現有學生的頭像也會一起換。")) { renderAdmin_(); return; }

@@ -8,16 +8,16 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="theme-color" content="#4f46e5">
-    <title>基翔小學通 - 雲端線上版</title>
+    <title>基翔學習通 - 雲端線上版</title>
     <!-- 手機／平板：加入主畫面、分頁與書籤用的圖示（與左上角圖示相同） -->
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
     <link rel="manifest" href="manifest.webmanifest">
-    <meta name="apple-mobile-web-app-title" content="小學通">
+    <meta name="apple-mobile-web-app-title" content="學習通">
     <meta name="mobile-web-app-capable" content="yes">
     <!-- 分頁小圖示（電腦）：和左上角一樣（藍紫底、白框、雲朵） -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%234f46e5'/><rect x='9' y='9' width='46' height='46' rx='11' fill='white'/><g transform='translate(14.5 19.5) scale(0.0578)'><path fill='%236366f1' d='M0 336c0 79.5 64.5 144 144 144h368c70.7 0 128-57.3 128-128 0-61.9-44-113.6-102.4-125.4 4.1-10.7 6.4-22.4 6.4-34.6 0-53-43-96-96-96-19.7 0-38.1 6-53.3 16.2C367 64.2 315.3 32 256 32c-88.4 0-160 71.6-160 160 0 2.7.1 5.4.2 8.1C40.2 219.8 0 273.2 0 336z'/></g></svg>">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 512 512%22%3E%3Crect width=%22512%22 height=%22512%22 rx=%22112%22 fill=%22#ffffff%22/%3E%3Cg fill=%22none%22 stroke=%22#4a8fe0%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M100 296 V432 Q182 420 256 452 Q330 420 412 432 V296%22 stroke-width=%2222%22/%3E%3Cpath d=%22M256 318 Q196 278 134 286 V406 Q198 400 256 430 Z%22 stroke-width=%2220%22/%3E%3Cpath d=%22M256 318 Q316 278 378 286 V406 Q314 400 256 430 Z%22 stroke-width=%2220%22/%3E%3Cpath d=%22M194 352 L238 394 L322 306%22 stroke=%22#ffffff%22 stroke-width=%2258%22/%3E%3Cpath d=%22M194 352 L238 394 L322 306%22 stroke-width=%2230%22/%3E%3C/g%3E%3Cpath d=%22M168 176 V224 Q256 264 344 224 V176 L256 212 Z%22 fill=%22#4a8fe0%22/%3E%3Cpath d=%22M256 66 L432 138 L256 210 L80 138 Z%22 fill=%22#4a8fe0%22 stroke=%22#ffffff%22 stroke-width=%2212%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M400 152 V214%22 stroke=%22#4a8fe0%22 stroke-width=%2210%22 stroke-linecap=%22round%22/%3E%3Crect x=%22391%22 y=%22208%22 width=%2218%22 height=%2230%22 rx=%225%22 fill=%22#4a8fe0%22/%3E%3C/svg%3E">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -91,12 +91,12 @@
     <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-30">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
             <div class="flex items-center space-x-2 sm:space-x-3 min-w-0">
-                <div class="shrink-0 bg-white text-indigo-600 p-1.5 sm:p-2 rounded-lg font-bold text-lg sm:text-xl shadow-inner">
-                    <i class="fa-solid fa-cloud text-indigo-500"></i>
+                <div class="shrink-0 bg-white text-indigo-600 p-1 rounded-lg font-bold text-lg sm:text-xl shadow-inner">
+                    <svg class="w-7 h-7 sm:w-8 sm:h-8" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><g fill="none" stroke="#4a8fe0" stroke-linecap="round" stroke-linejoin="round"><path d="M100 296 V432 Q182 420 256 452 Q330 420 412 432 V296" stroke-width="22"/><path d="M256 318 Q196 278 134 286 V406 Q198 400 256 430 Z" stroke-width="20"/><path d="M256 318 Q316 278 378 286 V406 Q314 400 256 430 Z" stroke-width="20"/><path d="M194 352 L238 394 L322 306" stroke="#ffffff" stroke-width="58"/><path d="M194 352 L238 394 L322 306" stroke-width="30"/></g><path d="M168 176 V224 Q256 264 344 224 V176 L256 212 Z" fill="#4a8fe0"/><path d="M256 66 L432 138 L256 210 L80 138 Z" fill="#4a8fe0" stroke="#ffffff" stroke-width="12" stroke-linejoin="round"/><path d="M400 152 V214" stroke="#4a8fe0" stroke-width="10" stroke-linecap="round"/><rect x="391" y="208" width="18" height="30" rx="5" fill="#4a8fe0"/></svg>
                 </div>
                 <div>
                     <h1 class="font-bold text-base sm:text-lg leading-tight flex items-center gap-1.5 whitespace-nowrap">
-                        基翔小學通 
+                        基翔學習通 
                         <span class="hidden sm:inline bg-emerald-500/80 text-[10px] px-1.5 py-0.5 rounded text-white font-normal">雲端同步版</span>
                     </h1>
                     
@@ -3100,7 +3100,7 @@ function renderMarquee_(now = twNow_()) {
         const range = champions.weekStart && champions.weekEnd ? `（${champions.weekStart.slice(5).replace("-", "/")}～${champions.weekEnd.slice(5).replace("-", "/")}）` : "";
         html = `🎉 恭喜以下同學上週${range}完成所有進度！　${names}　太棒了，繼續保持！🎉`;
     } else {
-        html = `📣 歡迎來到基翔小學通！按時完成作業、送出審核，上週全部完成的同學每週二會登上跑馬燈喔 ✨`;
+        html = `📣 歡迎來到基翔學習通！按時完成作業、送出審核，上週全部完成的同學每週二會登上跑馬燈喔 ✨`;
     }
     bar.classList.remove("hidden");
 
@@ -5918,7 +5918,7 @@ async function downloadBackup_() {
         const stamp = d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + "_" + z(d.getHours()) + z(d.getMinutes());
         let who = "全校";
         if (b.scope === "class") who = ((b.classes || [])[0] || {}).name || "本班";
-        const fname = "基翔小學通備份_" + who + "_" + stamp + ".json";
+        const fname = "基翔學習通備份_" + who + "_" + stamp + ".json";
         const blob = new Blob([JSON.stringify(b, null, 1)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");

@@ -14,20 +14,22 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: 讀一次資料庫
-        env:
-          SUPABASE_URL: https://jflnvliefjfxhfwjzqdi.supabase.co
-          SUPABASE_KEY: sb_publishable_ZVT08ujYz6NmsowKmqBNng_JxBJaVmb   # 公開金鑰（publishable），網頁裡本來就有，不是密碼
+      - name: 讀一次資料庫（測試專案＋正式專案）
         run: |
-          for i in 1 2 3; do
-            code=$(curl -s -o body.txt -w "%{http_code}" \
-              "$SUPABASE_URL/rest/v1/grades?select=name&limit=1" \
-              -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY")
-            echo "第 $i 次：HTTP $code"; cat body.txt; echo
-            [ "$code" = "200" ] && exit 0
-            sleep 20
-          done
-          echo "連不到資料庫，專案可能已經暫停，請到 Supabase 後台按 Restore"; exit 1
+          ping() {
+            for i in 1 2 3; do
+              code=$(curl -s -o body.txt -w "%{http_code}" "$1/rest/v1/grades?select=name&limit=1" -H "apikey: $2" -H "Authorization: Bearer $2")
+              echo "$3 第 $i 次：HTTP $code"; cat body.txt; echo
+              [ "$code" = "200" ] && return 0
+              sleep 20
+            done
+            echo "$3 連不到資料庫，專案可能已經暫停，請到 Supabase 後台按 Restore"; return 1
+          }
+          ok=0
+          # 公開金鑰（publishable），網頁裡本來就有，不是密碼
+          ping https://jflnvliefjfxhfwjzqdi.supabase.co sb_publishable_ZVT08ujYz6NmsowKmqBNng_JxBJaVmb 測試專案 || ok=1
+          ping https://trmrikaqzwpkwpuzfvuv.supabase.co sb_publishable_HA2cw2Div9TIYjywngPtow_G2XXEjBn 正式專案 || ok=1
+          exit $ok
 
       # GitHub 會停用 60 天沒有任何提交的公開專案排程，這一步每約 45 天自動留一筆紀錄，讓排程不會被停用
       - uses: actions/checkout@v4

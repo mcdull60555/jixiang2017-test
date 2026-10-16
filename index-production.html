@@ -161,7 +161,10 @@
                 <input id="admNewTLogin" placeholder="帳號 t_開頭，如 t_wang" class="border border-slate-300 rounded-lg px-2 py-1.5">
                 <input id="admNewTName" placeholder="老師姓名" class="border border-slate-300 rounded-lg px-2 py-1.5">
                 <select id="admNewTClass" class="border border-slate-300 rounded-lg px-2 py-1.5"></select>
-                <input id="admNewTPin" type="text" placeholder="密碼（4～64 字元）" class="border border-slate-300 rounded-lg px-2 py-1.5">
+                <div class="relative min-w-0">
+                    <input id="admNewTPin" type="password" autocomplete="new-password" placeholder="密碼（4～64 字元）" class="border border-slate-300 rounded-lg pl-2 pr-9 py-1.5 w-full min-w-0">
+                    <button type="button" onclick="togglePwVis_('admNewTPin', this)" class="absolute inset-y-0 right-0 px-2.5 text-slate-500 hover:text-slate-700" title="顯示密碼" aria-label="顯示密碼"><i class="fa-solid fa-eye"></i></button>
+                </div>
                 <button onclick="adminCreateTeacher_()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg px-3 py-1.5">新增老師</button>
             </div>
         </div>
@@ -198,7 +201,10 @@
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-2">
             <h3 class="font-bold text-slate-800">我的管理者密碼</h3>
             <div class="flex gap-2 text-sm">
-                <input id="admMyPin" type="password" placeholder="新密碼（4～64 字元）" class="border border-slate-300 rounded-lg px-2 py-1.5 flex-1 min-w-0 w-0">
+                <div class="relative flex-1 min-w-0">
+                    <input id="admMyPin" type="password" autocomplete="new-password" placeholder="新密碼（4～64 字元）" class="border border-slate-300 rounded-lg pl-2 pr-9 py-1.5 w-full min-w-0">
+                    <button type="button" onclick="togglePwVis_('admMyPin', this)" class="absolute inset-y-0 right-0 px-2.5 text-slate-500 hover:text-slate-700" title="顯示密碼" aria-label="顯示密碼"><i class="fa-solid fa-eye"></i></button>
+                </div>
                 <button onclick="adminChangeMyPin_()" class="bg-indigo-600 text-white font-bold rounded-lg px-3 py-1.5 whitespace-nowrap shrink-0">修改</button>
             </div>
         </div>
@@ -5643,9 +5649,26 @@ function adminMove_(btn, sel, dir) {
         if (isT) saveOrder_("adminTeacherList", "data-tid", "reorderTeachers"); else saveOrder_("adminClassList", "data-cid", "reorderClasses");
     });
 })();
+/* 密碼欄：預設隱藏，按眼睛切換顯示 */
+function togglePwVis_(id, btn, forceHide) {
+    const el = document.getElementById(id); if (!el) return;
+    const show = forceHide ? false : el.type === "password";
+    el.type = show ? "text" : "password";
+    if (!btn) btn = el.parentElement && el.parentElement.querySelector("button");
+    if (btn) {
+        btn.innerHTML = `<i class="fa-solid ${show ? "fa-eye-slash" : "fa-eye"}"></i>`;
+        btn.title = btn.ariaLabel = show ? "隱藏密碼" : "顯示密碼";
+    }
+}
+/* 新增成功後把輸入欄清空（密碼欄也恢復成隱藏） */
+function adminClearInputs_(ids) {
+    ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+    ["admNewTPin", "admMyPin"].forEach(id => { if (ids.includes(id)) togglePwVis_(id, null, true); });
+}
 function adminCreateTeacher_() {
     const g = id => document.getElementById(id).value.trim();
-    adminDo_("createTeacher", { loginId: g("admNewTLogin"), name: g("admNewTName"), pin: g("admNewTPin"), classId: g("admNewTClass") }, "老師已新增");
+    adminDo_("createTeacher", { loginId: g("admNewTLogin"), name: g("admNewTName"), pin: g("admNewTPin"), classId: g("admNewTClass") }, "老師已新增")
+        .then(ok => { if (ok) { adminClearInputs_(["admNewTLogin", "admNewTName", "admNewTPin"]); document.getElementById("admNewTClass").value = ""; } });
 }
 function adminSaveTeacher_(b) { const r = _row(b, "[data-tid]"); adminDo_("updateTeacher", { id: r.dataset.tid, name: r.querySelector(".tn").value.trim(), classId: r.querySelector(".tc").value }, "已儲存"); }
 function adminResetPin_(b) { const r = _row(b, "[data-tid]"); const p = prompt("輸入這位老師的新密碼（4～64 字元）"); if (p) adminDo_("setTeacherPin", { id: r.dataset.tid, pin: p }, "密碼已重設"); }
@@ -5668,14 +5691,14 @@ function saveGradeLock_() {
     closeModal("gradeLockModal");
     adminDo_("setTeacherGrades", { id: _gradeEditTid, grades: grades }, grades.length ? "已限制只能管理：" + grades.join("、") : "已解除限制（可管理所有年級）");
 }
-function adminAddClass_() { const n = document.getElementById("admNewClass").value.trim(); if (n) adminDo_("addClass", { name: n }, "班級已新增"); }
+function adminAddClass_() { const n = document.getElementById("admNewClass").value.trim(); if (n) adminDo_("addClass", { name: n }, "班級已新增").then(ok => { if (ok) adminClearInputs_(["admNewClass"]); }); }
 function adminRenameClass_(b) { const r = _row(b, "[data-cid]"); adminDo_("renameClass", { id: r.dataset.cid, name: r.querySelector(".cn").value.trim() }, "班級已改名"); }
 function adminDelClass_(b) { const r = _row(b, "[data-cid]"); if (confirm("確定刪除這個班級？該班的作業、聯絡簿與學生名單會一併刪除（學生帳號本身保留）。")) adminDo_("deleteClass", { id: r.dataset.cid }, "班級已刪除"); }
-function adminAddGrade_() { const n = document.getElementById("admNewGrade").value.trim(); if (n) adminDo_("addGrade", { name: n, avatar: document.getElementById("admNewGradeAvatar").value.trim() }, "年級已新增"); }
+function adminAddGrade_() { const n = document.getElementById("admNewGrade").value.trim(); if (n) adminDo_("addGrade", { name: n, avatar: document.getElementById("admNewGradeAvatar").value.trim() }, "年級已新增").then(ok => { if (ok) adminClearInputs_(["admNewGrade"]); }); }
 function adminDelGrade_(b) { if (confirm("確定刪除年級「" + b.dataset.n + "」？（還有學生使用時會被擋下）")) adminDo_("deleteGrade", { name: b.dataset.n }, "年級已刪除"); }
-function adminAddSubject_() { const n = document.getElementById("admNewSubject").value.trim(); if (n) adminDo_("addSubject", { name: n }, "科目已新增"); }
+function adminAddSubject_() { const n = document.getElementById("admNewSubject").value.trim(); if (n) adminDo_("addSubject", { name: n }, "科目已新增").then(ok => { if (ok) adminClearInputs_(["admNewSubject"]); }); }
 function adminDelSubject_(b) { if (confirm("確定刪除科目「" + b.dataset.n + "」？所有班使用該科目的項目都會一併刪除。")) adminDo_("deleteSubject", { name: b.dataset.n }, "科目已刪除"); }
-function adminChangeMyPin_() { const p = document.getElementById("admMyPin").value; if (p) adminDo_("changeMyPin", { pin: p }, "密碼已修改").then(ok => { if (ok) document.getElementById("admMyPin").value = ""; }); }
+function adminChangeMyPin_() { const p = document.getElementById("admMyPin").value; if (p) adminDo_("changeMyPin", { pin: p }, "密碼已修改").then(ok => { if (ok) adminClearInputs_(["admMyPin"]); }); }
 
 
 /* ----- 備份下載 ----- */

@@ -151,6 +151,17 @@
     <!-- 主要內容區 -->
     <main class="flex-grow max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
 
+    <style>
+    /* 手機版：右上角按鈕（待審核鈴鐺、改密碼、登出、切換）統一高度與字級 */
+    @media (max-width: 639px) {
+        #headerActions { gap: 6px; }
+        #headerActions > * + * { margin-left: 0 !important; }
+        #headerActions > button { height: 40px !important; min-height: 40px !important; padding: 0 10px !important;
+            font-size: 14px !important; font-weight: 700 !important; border-radius: 10px !important; gap: 4px; line-height: 1 !important; }
+        #headerActions > button i { margin: 0 !important; }
+        #teacherPendingReviewBadgeText { margin-left: 0 !important; }
+    }
+    </style>
     <!-- ==================== 多班級：管理者頁面 ==================== -->
     <div id="adminView" class="hidden max-w-5xl mx-auto px-3 sm:px-6 py-4 space-y-4">
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">

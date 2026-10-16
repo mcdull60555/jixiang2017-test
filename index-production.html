@@ -160,8 +160,9 @@
 
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-2">
             <h3 class="font-bold text-slate-800">全校備份</h3>
-            <p class="text-xs text-slate-500">下載一個備份檔，內含所有年級、科目、班級、老師帳號、學生、作業考卷、聯絡簿與送審紀錄（不含密碼）。建議每週下載一次存到電腦或雲端硬碟；檔案含學生資料，請妥善保管。</p>
-            <button onclick="downloadBackup_()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg px-3 py-1.5 text-sm"><i class="fa-solid fa-download mr-1"></i>下載全校備份</button>
+            <p class="text-xs text-slate-500">下載一個備份檔，內含所有年級、科目、班級、老師帳號、學生、作業考卷、聯絡簿與送審紀錄（不含密碼）。只有管理者可以下載。系統每週會提醒一次，請存到電腦或雲端硬碟；檔案含學生資料，請妥善保管。</p>
+<div id="backupStatus" class="text-xs font-bold rounded-lg px-3 py-2 bg-slate-50 text-slate-500">上次備份：讀取中…</div>
+                        <button onclick="downloadBackup_()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg px-3 py-1.5 text-sm"><i class="fa-solid fa-download mr-1"></i>下載全校備份</button>
         </div>
 
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
@@ -529,9 +530,6 @@
                     <div class="flex items-center space-x-2">
                         <button onclick="openAddExistingModal_()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm px-3 py-2 rounded-lg font-bold transition flex items-center">
                             <i class="fa-solid fa-user-check mr-1"></i> 加入現有學生
-                        </button>
-                        <button onclick="downloadBackup_()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm px-3 py-2 rounded-lg font-bold transition flex items-center" title="下載本班所有資料（不含密碼）">
-                            <i class="fa-solid fa-download mr-1"></i> 下載備份
                         </button>
                         <button onclick="openBatchAddStudentModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-3 py-2 rounded-lg font-bold transition flex items-center">
                             <i class="fa-solid fa-users-line mr-1"></i> 批次新增學生
@@ -2094,6 +2092,15 @@ async function sbAdminOp_(body) {
     return ok();
 }
 
+/* ---------- 管理者：最後一次備份時間（每週提醒用） ---------- */
+async function sbLastBackup_() {
+    const profile = await sbProfile_();
+    if (profile.role !== "admin") throw sbUnauthorized_();
+    const { data, error } = await sb.rpc("get_last_backup");
+    if (error) return { status: "success", supported: false, at: null };
+    return { status: "success", supported: true, at: data || null };
+}
+
 /* ---------- 老師切換目前的班級 ---------- */
 async function sbSwitchClass_(body) {
     const profile = await sbProfile_();
@@ -2107,7 +2114,7 @@ async function sbSwitchClass_(body) {
 /* ---------- 備份下載（老師：本班；管理者：全校；不含任何密碼） ---------- */
 async function sbBackup_() {
     const profile = await sbProfile_();
-    if (profile.role !== "teacher" && profile.role !== "admin") throw sbUnauthorized_();
+    if (profile.role !== "admin") throw sbUnauthorized_("只有管理者可以下載備份");
     const { data, error } = await sb.rpc("backup_data");
     if (error) throw sbFriendlyErr_(error, "備份失敗");
     return { status: "success", backup: data };
@@ -2127,6 +2134,7 @@ async function gasPost_(action, bodyObj) {
         case "adminOp": return sbAdminOp_(body);
         case "switchClass": return sbSwitchClass_(body);
         case "backup": return sbBackup_(body);
+        case "lastBackup": return sbLastBackup_(body);
         default:
             return { status: "error", message: "未知的 action：" + action };
     }
@@ -5809,6 +5817,7 @@ function teacherAvatar_(t, gradeAvatars) {
     return pick(free.length ? free : all);
 }
 function renderAdmin_() {
+    refreshBackupStatus_(true);
     const a = window.appData;
     const classes = a.classes || [];
     const classOpts = (sel) => `<option value="">（未分配）</option>` + classes.map(c => `<option value="${_esc(c.id)}" ${c.id === sel ? "selected" : ""}>${_esc(c.name)}</option>`).join("");
@@ -6031,6 +6040,30 @@ async function downloadBackup_() {
     } catch (e) { msg = e.message || String(e); }
     finally { hideBusy_(); }
     alert((ok ? "✅ " : "⚠️ ") + msg);
+    if (ok) refreshBackupStatus_(false);
+}
+
+/* ----- 每週提醒管理者備份：超過 7 天（或從沒備份）就在後台標紅，登入後跳窗提醒一次 ----- */
+const BACKUP_REMIND_DAYS = 7;
+let _backupReminded = false;
+async function refreshBackupStatus_(remind) {
+    const el = document.getElementById("backupStatus");
+    if (!el) return;
+    let r;
+    try { r = await gasPost_("lastBackup", {}); } catch (e) { return; }
+    if (!r || r.status !== "success" || !r.supported) { el.innerText = "上次備份：（資料庫尚未安裝備份紀錄）"; return; }
+    const at = r.at ? new Date(r.at) : null;
+    const days = at ? Math.floor((Date.now() - at.getTime()) / 86400000) : null;
+    const due = !at || days >= BACKUP_REMIND_DAYS;
+    const when = at ? `${fmtTs_(r.at)}（${days === 0 ? "今天" : days + " 天前"}）` : "還沒有備份過";
+    el.className = "text-xs font-bold rounded-lg px-3 py-2 " + (due ? "bg-rose-50 text-rose-700 border border-rose-200" : "bg-emerald-50 text-emerald-700");
+    el.innerHTML = (due ? '<i class="fa-solid fa-triangle-exclamation mr-1"></i>' : '<i class="fa-solid fa-circle-check mr-1"></i>') + "上次備份：" + _esc(when) + (due ? "　該備份了！" : "");
+    if (remind && due && !_backupReminded) {
+        _backupReminded = true;
+        setTimeout(() => {
+            if (confirm((at ? `距離上次備份已經 ${days} 天了。` : "系統還沒有任何備份。") + "\n為了避免資料遺失，建議每週備份一次。\n\n要現在下載全校備份嗎？")) downloadBackup_();
+        }, 300);
+    }
 }
 
 

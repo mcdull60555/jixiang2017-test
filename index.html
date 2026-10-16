@@ -5712,12 +5712,17 @@ async function adminDo_(op, args, okText, quiet) {
     if (!(quiet && ok)) admMsg_(msg, ok); // 排序成功不跳窗；失敗仍會提示
     return ok;
 }
-/* 老師頭像＝可管理年級的頭像；有兩個以上年級時隨機挑一個（依老師固定，重新整理不會一直換）；不限年級用預設頭像 */
+/* 老師頭像＝可管理年級的頭像；有兩個以上年級時隨機挑一個（依老師固定，重新整理不會一直換）；
+   不限年級的老師，從「沒有被任何年級用到」的頭像裡挑一個 */
 function teacherAvatar_(t, gradeAvatars) {
-    const list = (t.allowedGrades || []).map(g => gradeAvatars[g]).filter(Boolean);
-    if (!list.length) return "👩‍🏫";
     let h = 0; for (const ch of String(t.id || t.loginId || "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-    return list[h % list.length];
+    const pick = list => list[h % list.length];
+    const own = (t.allowedGrades || []).map(g => gradeAvatars[g]).filter(Boolean);
+    if (own.length) return pick(own);
+    const used = new Set(Object.values(gradeAvatars || {}));
+    const all = (typeof AVATAR_OPTIONS !== "undefined" && AVATAR_OPTIONS.length) ? AVATAR_OPTIONS : ["🦉"];
+    const free = all.filter(a => !used.has(a));
+    return pick(free.length ? free : all);
 }
 function renderAdmin_() {
     const a = window.appData;

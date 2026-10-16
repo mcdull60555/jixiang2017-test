@@ -1008,6 +1008,15 @@
         </div>
     </div>
 
+    <!-- 新增學生防呆：全校已有同名同校同年級 -->
+    <div id="dupStudentModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center modal-backdrop p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl space-y-3 border border-amber-200 text-sm max-h-[90vh] flex flex-col">
+            <h3 class="font-bold text-amber-700 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i><span id="dupStudentTitle">可能是同一位學生</span></h3>
+            <div id="dupStudentBody" class="text-slate-600 space-y-2 overflow-y-auto"></div>
+            <div id="dupStudentBtns" class="flex flex-col gap-2 pt-1"></div>
+        </div>
+    </div>
+
     <!-- 管理者：新增老師 -->
     <div id="newTeacherModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
         <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-3 border border-slate-200 text-sm">
@@ -4687,7 +4696,7 @@ function generateRandomPwdInput() {
     document.getElementById("studentPwdInput").value = Math.floor(1000 + Math.random() * 9000).toString();
 }
 
-async function saveStudent() {
+async function saveStudentRaw_() {
     const id = document.getElementById("editStudentId").value;
     const name = document.getElementById("studentNameInput").value.trim();
     const school = document.getElementById("studentSchoolInput").value.trim();
@@ -4792,7 +4801,7 @@ function openBatchAddStudentModal() {
     openModal("batchAddStudentModal");
 }
 
-async function saveBatchStudents() {
+async function saveBatchStudentsRaw_() {
     const school = document.getElementById("batchStudentSchoolInput").value.trim();
     const grade = document.getElementById("batchStudentGradeInput").value;
     const rawNames = document.getElementById("batchStudentNamesInput").value;
@@ -6022,6 +6031,107 @@ async function downloadBackup_() {
     } catch (e) { msg = e.message || String(e); }
     finally { hideBusy_(); }
     alert((ok ? "✅ " : "⚠️ ") + msg);
+}
+
+
+/* ----- 新增學生防呆：全校已有同名、同學校、同年級的學生時先提醒 ----- */
+function askChoice_(title, bodyHtml, buttons) {
+    return new Promise(resolve => {
+        document.getElementById("dupStudentTitle").innerText = title;
+        document.getElementById("dupStudentBody").innerHTML = bodyHtml;
+        const box = document.getElementById("dupStudentBtns");
+        box.innerHTML = buttons.map((b, i) => `<button data-i="${i}" class="w-full font-bold py-2.5 rounded-xl text-sm ${b.cls || "bg-slate-100 text-slate-600"}">${_esc(b.label)}</button>`).join("");
+        box.querySelectorAll("button").forEach(el => el.onclick = () => { closeModal("dupStudentModal"); resolve(buttons[+el.dataset.i].key); });
+        openModal("dupStudentModal");
+    });
+}
+const _normName_ = s => String(s || "").replace(/\s+/g, "").toLowerCase();
+async function schoolStudentIndex_() {
+    try {
+        const pub = await sbGetPublic_();
+        const clsName = Object.fromEntries((pub.classes || []).map(c => [c.id, c.name]));
+        const inClasses = {};
+        (pub.classStudents || []).forEach(x => { (inClasses[x.studentId] = inClasses[x.studentId] || []).push(clsName[x.classId] || "其他班"); });
+        window._allSchoolStudents = pub.students;
+        return { students: pub.students || [], inClasses };
+    } catch (e) { return null; } // 讀不到就不檢查，照常新增
+}
+function findDupStudents_(idx, name, school, grade) {
+    if (!idx) return [];
+    return idx.students.filter(s => _normName_(s.name) === _normName_(name) && _normName_(s.school) === _normName_(school) && s.grade === grade);
+}
+const _dupLabel_ = (s, idx) => `${_esc(s.name)}（${_esc(s.school)}・${_esc(s.grade)}）目前在：${_esc((idx.inClasses[s.id] || ["尚未加入任何班"]).join("、"))}`;
+
+async function joinExistingStudents_(ids) {
+    const r = await gasPost_("addExisting", { ids: ids });
+    if (r.status !== "success") throw new Error(r.message || "加入失敗");
+    await refreshFullData_();
+}
+
+async function saveStudent() {
+    const id = document.getElementById("editStudentId").value;
+    if (id) return saveStudentRaw_(); // 編輯既有學生不檢查
+    const name = document.getElementById("studentNameInput").value.trim();
+    const school = document.getElementById("studentSchoolInput").value.trim();
+    const grade = document.getElementById("studentGradeInput").value;
+    if (!name || !school) return saveStudentRaw_(); // 交給原本的檢查提示
+    showBusy_("檢查是否已有這位學生…");
+    const idx = await schoolStudentIndex_();
+    hideBusy_();
+    const dups = findDupStudents_(idx, name, school, grade);
+    if (!dups.length) return saveStudentRaw_();
+    const mine = new Set((window.appData.students || []).map(s => s.id));
+    const others = dups.filter(s => !mine.has(s.id));
+    const body = `<p>全校已經有同名、同學校、同年級的學生：</p><ul class="list-disc pl-5 font-bold text-slate-700">${dups.map(s => `<li>${_dupLabel_(s, idx)}</li>`).join("")}</ul>`
+        + (others.length ? `<p>如果是同一個孩子，請選「加入現有學生」，這樣他只有一個帳號，家長登入就能看到所有班的進度。</p>` : `<p>這位學生已經在你的班上了。</p>`);
+    const btns = [];
+    if (others.length) btns.push({ key: "join", label: "加入現有學生（建議）", cls: "bg-indigo-600 text-white" });
+    btns.push({ key: "new", label: "確定是不同人，仍然新增", cls: "bg-amber-100 text-amber-800" });
+    btns.push({ key: "cancel", label: "取消" });
+    const pick = await askChoice_("可能是同一位學生", body, btns);
+    if (pick === "new") return saveStudentRaw_();
+    if (pick === "join") {
+        closeModal("studentModal");
+        showBusy_("加入中…");
+        try { await joinExistingStudents_([others[0].id]); alert("✅ 已把「" + others[0].name + "」加入你的班。原本的登入密碼不變。"); }
+        catch (e) { alert("⚠️ " + (e.message || e)); }
+        finally { hideBusy_(); }
+    }
+}
+
+async function saveBatchStudents() {
+    const ta = document.getElementById("batchStudentNamesInput");
+    const school = document.getElementById("batchStudentSchoolInput").value.trim();
+    const grade = document.getElementById("batchStudentGradeInput").value;
+    const names = ta.value.split("\n").map(n => n.trim()).filter(Boolean);
+    if (!school || !names.length) return saveBatchStudentsRaw_();
+    showBusy_("檢查是否已有這些學生…");
+    const idx = await schoolStudentIndex_();
+    hideBusy_();
+    const mine = new Set((window.appData.students || []).map(s => s.id));
+    const hits = names.map(n => ({ name: n, dups: findDupStudents_(idx, n, school, grade) })).filter(x => x.dups.length);
+    if (!hits.length) return saveBatchStudentsRaw_();
+    const joinable = hits.filter(x => x.dups.some(s => !mine.has(s.id)));
+    const body = `<p>下列 ${hits.length} 位，全校已經有同名、同學校（${_esc(school)}）、同年級（${_esc(grade)}）的學生：</p>
+        <ul class="list-disc pl-5 text-slate-700">${hits.map(x => `<li><b>${_esc(x.name)}</b>：目前在 ${_esc(x.dups.map(s => (idx.inClasses[s.id] || ["尚未加入任何班"]).join("、")).join("／"))}</li>`).join("")}</ul>
+        <p>如果是同一個孩子，建議直接加入你的班，不要重複建立帳號。</p>`;
+    const btns = [];
+    if (joinable.length) btns.push({ key: "join", label: `重複的 ${joinable.length} 位改為「加入現有學生」，其餘新增（建議）`, cls: "bg-indigo-600 text-white" });
+    btns.push({ key: "new", label: "全部都是不同人，照常新增", cls: "bg-amber-100 text-amber-800" });
+    btns.push({ key: "cancel", label: "取消" });
+    const pick = await askChoice_("可能有重複的學生", body, btns);
+    if (pick === "new") return saveBatchStudentsRaw_();
+    if (pick !== "join") return;
+    const joinNames = new Set(joinable.map(x => x.name));
+    const inMine = new Set(hits.filter(x => !joinNames.has(x.name)).map(x => x.name)); // 已在自己班上的，也不要再新增
+    const joinIds = joinable.map(x => (x.dups.find(s => !mine.has(s.id)) || {}).id).filter(Boolean);
+    const rest = names.filter(n => !joinNames.has(n) && !inMine.has(n));
+    if (rest.length) { ta.value = rest.join("\n"); await saveBatchStudentsRaw_(); }
+    else closeModal("batchAddStudentModal");
+    showBusy_("加入中…");
+    try { await joinExistingStudents_(joinIds); alert("✅ 已把 " + joinIds.length + " 位現有學生加入你的班（原本的登入密碼不變）。" + (inMine.size ? "\n另外 " + inMine.size + " 位已經在你的班上，沒有重複新增。" : "")); }
+    catch (e) { alert("⚠️ " + (e.message || e)); }
+    finally { hideBusy_(); }
 }
 
     </script>

@@ -297,26 +297,32 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="overflow-x-auto"><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[max-content_max-content_minmax(max-content,1fr)_minmax(max-content,1fr)] gap-4">
                     <div class="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3 space-y-2">
-                        <h4 id="kpiLastWeekTitle" class="text-xs font-bold text-slate-700 flex items-center">
+                        <h4 id="kpiLastWeekTitle" class="text-xs font-bold text-slate-700 flex items-center whitespace-nowrap">
                             <i class="fa-solid fa-calendar-minus text-slate-500 mr-1.5"></i> 上週 KPI
                         </h4>
-                        <div id="kpiLastWeekList" class="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar"></div>
+                        <div id="kpiLastWeekList" class="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar pr-2"></div>
                     </div>
                     <div class="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3 space-y-2">
-                        <h4 id="kpiThisWeekTitle" class="text-xs font-bold text-slate-700 flex items-center">
+                        <h4 id="kpiThisWeekTitle" class="text-xs font-bold text-slate-700 flex items-center whitespace-nowrap">
                             <i class="fa-solid fa-calendar-week text-indigo-500 mr-1.5"></i> 本週 KPI
                         </h4>
-                        <div id="kpiThisWeekList" class="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar"></div>
+                        <div id="kpiThisWeekList" class="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar pr-2"></div>
                     </div>
                     <div class="bg-rose-50/60 border border-rose-200/80 rounded-xl p-3 space-y-2">
-                        <h4 id="kpiCareTitle" class="text-xs font-bold text-rose-800 flex items-center">
+                        <h4 id="kpiCareTitle" class="text-xs font-bold text-rose-800 flex items-center whitespace-nowrap">
                             <i class="fa-solid fa-heart-pulse text-rose-500 mr-1.5"></i> 需要關懷（低於 80%）
                         </h4>
-                        <div id="kpiCareList" class="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar"></div>
+                        <div id="kpiCareList" class="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar pr-2"></div>
                     </div>
-                </div>
+                    <div class="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3 space-y-2">
+                        <h4 id="kpiNotFullTitle" class="text-xs font-bold text-amber-800 flex items-center whitespace-nowrap">
+                            <i class="fa-solid fa-list-check text-amber-500 mr-1.5"></i> 全部項目未達 100%
+                        </h4>
+                        <div id="kpiNotFullList" class="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar pr-2"></div>
+                    </div>
+                </div></div>
             </div>
 
             <!-- 控制頁籤與操作按鈕 -->
@@ -841,7 +847,10 @@
                 </div>
 
                 <div id="singleEditMultiStudentContainer" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
-                    <p class="font-bold text-slate-600 mb-1">勾選要派發的學生：</p>
+                    <div class="flex items-center justify-between mb-1">
+                        <p class="font-bold text-slate-600">勾選要派發的學生：</p>
+                        <label class="flex items-center space-x-1 font-bold text-indigo-600 cursor-pointer"><input type="checkbox" id="singleEditSelectAll" onchange="toggleAllStudentCbs_('single-edit-st-cb', this.checked)" class="rounded text-indigo-600"><span>全選</span></label>
+                    </div>
                     <div id="singleEditStudentCheckboxes" class="grid grid-cols-2 gap-2"></div>
                 </div>
 
@@ -1221,7 +1230,10 @@
                 </div>
 
                 <div id="multiStudentContainer" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
-                    <p class="text-xs font-bold text-slate-500 mb-1">勾選要派發的學生：</p>
+                    <div class="flex items-center justify-between mb-1">
+                        <p class="text-xs font-bold text-slate-500">勾選要派發的學生：</p>
+                        <label class="flex items-center space-x-1 text-xs font-bold text-indigo-600 cursor-pointer"><input type="checkbox" id="taskSelectAll" onchange="toggleAllStudentCbs_('task-st-cb', this.checked)" class="rounded text-indigo-600"><span>全選</span></label>
+                    </div>
                     <div id="multiStudentCheckboxes" class="grid grid-cols-2 gap-2 text-xs"></div>
                 </div>
 
@@ -1558,8 +1570,14 @@ function sbVersion_(view) {
     const s = JSON.stringify(view);
     let h = 5381;
     for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
-    const twDate = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
-    return h.toString(36) + "." + s.length.toString(36) + "|" + twDate;
+    return h.toString(36) + "." + s.length.toString(36) + "|" + sbDayMarks_();
+}
+
+// 台灣日期 + 預約項目生效日（凌晨 05:00 換日）：任一個改變，前端都會重抓一次資料（與正式版 Code.gs dataToken_ 相同）
+const SB_TASK_START_HOUR = 5;
+function sbDayMarks_() {
+    const tw = Date.now() + 8 * 3600000;
+    return new Date(tw).toISOString().slice(0, 10) + "|" + new Date(tw - SB_TASK_START_HOUR * 3600000).toISOString().slice(0, 10);
 }
 
 // 輕量版本標記：由資料庫算出一小段指紋（幾十個字元），輪詢時只問這個，沒變就不下載整份資料。
@@ -1568,7 +1586,7 @@ async function sbServerVersion_() {
     try {
         const r = await sb.rpc("get_data_version");
         if (r.error || !r.data || typeof r.data !== "string") return null;
-        return "s:" + r.data + "|" + new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+        return "s:" + r.data + "|" + sbDayMarks_();
     } catch (_) { return null; }
 }
 
@@ -2625,7 +2643,7 @@ async function verifyTeacherLogin() {
 function openStudentLoginModal() {
     const select = document.getElementById("loginStudentSelect");
     select.innerHTML = sortStudentsByGradeSchool_(window.appData.students)
-        .map(s => `<option value="${s.id}">${escHtml_(studentOptionLabel_(s))}</option>`).join('');
+        .map(s => `<option value="${s.id}">${escHtml_([s.school, maskName_(s.name), s.grade].filter(Boolean).join(" "))}</option>`).join('');
     document.getElementById("studentLoginPwdInput").value = "";
     document.getElementById("studentLoginError").classList.add("hidden");
     openModal("studentLoginModal");
@@ -2763,9 +2781,9 @@ function renderRoleView() {
     }
 }
 
-/* ==================== 歸檔項目 15 天生命週期自動清空機制 ==================== */
+/* ==================== 歸檔項目 7 天生命週期自動清空機制 ==================== */
 // 只清「已歸檔」的項目：依「類型_科目_標題_派發日」分組（和各科派發項目維護中心的分組一樣），
-// 整組都 100% 完成才算歸檔；歸檔且派發日超過 15 天就清掉。還沒完成的項目不管多久都保留。
+// 整組都 100% 完成才算歸檔；歸檔且派發日超過 7 天就清掉。還沒完成的項目不管多久都保留。
 // 老師端清掉後，下次儲存（或重新整理）會同步刪除雲端資料；學生端只是不再顯示自己已完成的舊項目。
 const ARCHIVE_LIFECYCLE_DAYS = 7;
 function checkAndCleanLifeCycleTasks() {
@@ -2820,8 +2838,10 @@ function switchTeacherTab(tabName) {
 function renderTeacherDashboard() {
     checkAndCleanLifeCycleTasks();
     const totalStudents = window.appData.students.length;
-    const totalHw = window.appData.tasks.filter(t => t.type === '作業').length;
-    const totalExam = window.appData.tasks.filter(t => t.type === '考卷').length;
+    // 預約派發（還沒到發布日期）的項目先不計入
+    const startedTasks = window.appData.tasks.filter(isTaskStarted_);
+    const totalHw = startedTasks.filter(t => t.type === '作業').length;
+    const totalExam = startedTasks.filter(t => t.type === '考卷').length;
 
     document.getElementById("kpiStudentCount").innerText = `${totalStudents} 人`;
     document.getElementById("kpiHomeworkCount").innerText = `${totalHw} 項`;
@@ -2883,7 +2903,10 @@ function populateTeacherFilterDropdowns() {
 
 /* 共用：學生是否 100% 完成所有已發派項目（師生兩端皇冠共用） */
 /* 共用：項目要從發布日期（t.date）當天起才算進 KPI、才顯示在學生清單 */
-function isTaskStarted_(t) { return !t.date || String(t.date) <= localDateStr_(); }
+/* 預約派發的項目在發布日期當天凌晨 05:00 才生效（台灣時間往前推 5 小時當作「生效日」；需與 Code.gs TASK_START_HOUR 一致） */
+const TASK_START_HOUR = 5;
+function taskActiveDateStr_() { return localDateStr_(new Date(twNow_().getTime() - TASK_START_HOUR * 3600 * 1000)); }
+function isTaskStarted_(t) { return !t.date || String(t.date) <= taskActiveDateStr_(); }
 function isStudentAllCompleted(studentId) {
     const tasks = (window.appData.tasks || []).filter(t => t.studentId === studentId && isTaskStarted_(t));
     return tasks.length > 0 && tasks.every(t => t.teacherStatus === "已完成");
@@ -3030,7 +3053,7 @@ function renderMarquee_(now = twNow_()) {
     if (showChampions) {
         const medals = ["🥇", "🥈", "🥉"];
         const names = list.map((c, i) =>
-            `${medals[i] || "🌟"} ${escHtml_(maskName_(c.name))}${c.grade ? "（" + escHtml_(c.grade) + "）" : ""}`).join("　");
+            `${medals[i] || "🌟"} ${escHtml_(maskName_(c.name))}${c.grade ? `（${escHtml_(c.grade)}）` : ""}`).join("　");
         const range = champions.weekStart && champions.weekEnd ? `（${champions.weekStart.slice(5).replace("-", "/")}～${champions.weekEnd.slice(5).replace("-", "/")}）` : "";
         html = `🎉 恭喜以下同學上週${range}完成所有進度！　${names}　太棒了，繼續保持！🎉`;
     } else {
@@ -3068,6 +3091,10 @@ window.addEventListener("resize", () => {
 });
 
 /* 這個期間有項目、而且全部都老師審核完成 → 皇冠 */
+/* 該週有項目、但老師審核完成率低於 80% → 太陽（跟皇冠同樣的顯示方式） */
+function isKpiLow_(k) {
+    return k.total > 0 && k.rate < KPI_CARE_THRESHOLD;
+}
 function isKpiFull_(k) {
     return k.total > 0 && k.completed === k.total;
 }
@@ -3549,7 +3576,7 @@ function renderKpiOverview() {
     const row = (s, k, showTime, period) => `
         <button type="button" onclick="openStudentPendingModal('${escHtml_(s.id)}', '${period}')"
             class="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-left hover:border-indigo-300 hover:bg-indigo-50/50 transition">
-            <span class="min-w-0 truncate text-xs font-bold text-slate-700">
+            <span class="whitespace-nowrap text-xs font-bold text-slate-700">
                 ${s.school ? `<span class="text-slate-400 font-medium">${escHtml_(s.school)}</span> ` : ''}${escHtml_(s.name)}${isKpiFull_(k) ? ' 👑' : ''}
             </span>
             <span class="shrink-0 flex items-center gap-1.5">
@@ -3573,6 +3600,20 @@ function renderKpiOverview() {
     };
     fill(lastEl, "kpiLastWeekTitle", "fa-solid fa-calendar-minus text-slate-500", "上週 KPI", "last", "上週沒有派發項目");
     fill(thisEl, "kpiThisWeekTitle", "fa-solid fa-calendar-week text-indigo-500", "本週 KPI", "this", "本週還沒有派發項目");
+
+    // 全部項目 KPI 未達 100%：還有項目沒做完（含已送出待審核、待訂正）的學生，完成率低的排前面
+    const notFullEl = document.getElementById("kpiNotFullList");
+    if (notFullEl) {
+        const notFull = students
+            .map(s => ({ s, k: getStudentKpi(s.id, 'all') }))
+            .filter(x => x.k.total > 0 && x.k.rate < 100)
+            .sort((a, b) => (a.k.rate - b.k.rate) || a.s.name.localeCompare(b.s.name, "zh-Hant"));
+        document.getElementById("kpiNotFullTitle").innerHTML =
+            `<i class="fa-solid fa-list-check text-amber-500 mr-1.5"></i> 全部項目未達 100%<span class="ml-1 text-amber-500 font-medium">${notFull.length} 人</span>`;
+        notFullEl.innerHTML = notFull.length
+            ? notFull.map(x => row(x.s, x.k, false, 'all')).join("")
+            : '<div class="text-center text-emerald-600 text-xs font-bold py-4">所有學生的全部項目都已完成 🎉</div>';
+    }
 
     const careList = students
         .map(s => ({ s, k: getStudentKpi(s.id, basis) }))
@@ -3626,7 +3667,8 @@ function renderSubjectCompletionRates() {
     const targetStudentId = document.getElementById("completionRateStudentSelect")?.value || "all";
     const subjects = window.appData.subjects || [];
 
-    let relevantTasks = window.appData.tasks;
+    // 預約派發（還沒到發布日期）的項目不列入完成率
+    let relevantTasks = window.appData.tasks.filter(isTaskStarted_);
     if (targetStudentId !== "all") {
         relevantTasks = relevantTasks.filter(t => t.studentId === targetStudentId);
     }
@@ -3679,7 +3721,8 @@ function renderTeacherTasksTable() {
     const statusFilter = document.getElementById("filterStatus")?.value || "all";
     const timeFilter = readTimeFilter_("task");
 
-    let tasks = [...window.appData.tasks];
+    // 全班進度管控與審核：未到發布日期的預約項目先不列入，當天才出現（派發項目管理仍看得到）
+    let tasks = window.appData.tasks.filter(isTaskStarted_);
 
     // 清掉已不存在的選取（例如被即時同步刪除的項目）
     const allIds = new Set(tasks.map(t => String(t.id)));
@@ -3709,16 +3752,28 @@ function renderTeacherTasksTable() {
         return true;
     });
 
-    // 排序：待審核 → 未完成/待訂正 → 已完成；同組內依發布日期新到舊，再依年級由小到大，最後依學校
+    // 排序：待審核 → 未完成/待訂正 → 已完成；
+    // 待審核這組先送出的排最前面（讓老師先審送最久的，沒有送出時間的舊資料排在有時間的後面）；
+    // 其餘依 發布日期（新到舊）→ 項目名稱／範圍（數字依大小）→ 年級（小到大）→ 學生姓名（最後才看學校）
     const reviewTier = t => t.pendingReview ? 0 : (t.teacherStatus === "已完成" ? 2 : 1);
     const gradeList = window.appData.grades || [];
     const studentOf = t => window.appData.students.find(s => s.id === t.studentId) || {};
     const gradeRank = t => { const i = gradeList.indexOf(studentOf(t).grade); return i < 0 ? 9999 : i; };
     const zh = (x, y) => String(x || "").localeCompare(String(y || ""), "zh-Hant", { numeric: true });
+    const submittedKey = t => String(t.submittedAt || "");
+    const bySubmitted = (a, b) => {
+        if (reviewTier(a) !== 0) return 0; // 只有「待審核」這組才看送出時間
+        const x = submittedKey(a), y = submittedKey(b);
+        if (!x !== !y) return x ? -1 : 1;
+        return x < y ? -1 : x > y ? 1 : 0;
+    };
     tasks.sort((a, b) =>
         (reviewTier(a) - reviewTier(b)) ||
+        bySubmitted(a, b) ||
         String(b.date || "").localeCompare(String(a.date || "")) ||
+        zh(a.title, b.title) ||
         (gradeRank(a) - gradeRank(b)) ||
+        zh(studentOf(a).name, studentOf(b).name) ||
         zh(studentOf(a).school, studentOf(b).school));
 
     visibleReviewIds = tasks.map(t => String(t.id));
@@ -4025,6 +4080,7 @@ function renderDispatchManagement() {
                                     ${escHtml_(g.subject)}
                                 </span>
                                 <h4 class="font-bold text-slate-800 text-xs sm:text-sm">${escHtml_(g.title)}</h4>
+                                ${String(g.date) > taskActiveDateStr_() ? '<span class="bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded text-[10px] font-extrabold"><i class="fa-solid fa-clock mr-1"></i>預約派發</span>' : ''}
                                 ${isArchived ? '<span class="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-[10px] font-extrabold"><i class="fa-solid fa-box-archive mr-1"></i>100%已歸檔</span>' : ''}
                             </div>
                             <p class="text-[11px] text-slate-400 mt-0.5">發布日期：${g.date} | 完成進度：${g.completedCount}/${assignedCount}</p>
@@ -4133,15 +4189,26 @@ function openSingleEditDispatchModal(idsStr) {
     openModal("singleEditDispatchModal");
 }
 
+/* 「全選」勾選框：一次勾選／取消全部學生；個別取消後全選會自動取消勾選 */
+function toggleAllStudentCbs_(cls, checked) {
+    document.querySelectorAll('.' + cls).forEach(cb => { cb.checked = checked; });
+}
+function syncSelectAll_(cls, allId) {
+    const cbs = [...document.querySelectorAll('.' + cls)];
+    const all = document.getElementById(allId);
+    if (all) all.checked = cbs.length > 0 && cbs.every(cb => cb.checked);
+}
+
 function renderSingleEditStudentCheckboxes(selectedIds = []) {
     const container = document.getElementById("singleEditStudentCheckboxes");
     if (!container) return;
     container.innerHTML = window.appData.students.map(s => `
         <label class="flex items-center space-x-1.5 font-bold text-slate-700 cursor-pointer">
-            <input type="checkbox" value="${escHtml_(s.id)}" ${selectedIds.includes(s.id) ? 'checked' : ''} class="single-edit-st-cb rounded text-indigo-600">
+            <input type="checkbox" value="${escHtml_(s.id)}" ${selectedIds.includes(s.id) ? 'checked' : ''} onchange="syncSelectAll_('single-edit-st-cb', 'singleEditSelectAll')" class="single-edit-st-cb rounded text-indigo-600">
             <span>${s.school ? `<span class="text-slate-400 font-medium">${escHtml_(s.school)}</span> ` : ''}${escHtml_(s.name)} (${escHtml_(s.grade)})</span>
         </label>
     `).join('');
+    syncSelectAll_('single-edit-st-cb', 'singleEditSelectAll');
 }
 
 function toggleSingleEditTargetMode() {
@@ -4328,6 +4395,12 @@ const DEFAULT_STUDENT_PWD = "0000"; // 新增學生的預設密碼
 
 /* 學生管理排序：年級（依「科目與年級設定」裡的順序，一年級在前）→ 學校 → 班級 → 姓名，全部遞增 */
 // 下拉選單用：學校 學生姓名 年級
+/* 對外顯示（學生登入選單、跑馬燈）用：姓名第二個字改成 O，例如 王小明 → 王O明 */
+function maskName_(name) {
+    const a = Array.from(String(name || ""));
+    if (a.length >= 2) a[1] = "O";
+    return a.join("");
+}
 function studentOptionLabel_(s) {
     return [s.school, s.name, s.grade].filter(Boolean).join(" ");
 }
@@ -4444,12 +4517,12 @@ function renderStudentsCards() {
 
                 <div class="grid grid-cols-3 gap-1.5 text-center">
                     <div class="relative rounded-lg px-1 py-1.5 ${kpiToneClass_(kpiThis)}">
-                        ${isKpiFull_(kpiThis) ? '<span class="absolute -top-2 -right-1 text-sm drop-shadow" title="本週的項目全部完成！">👑</span>' : ''}
+                        ${isKpiFull_(kpiThis) ? '<span class="absolute -top-2 -right-1 text-sm drop-shadow" title="本週的項目全部完成！">👑</span>' : ''}${isKpiLow_(kpiThis) ? `<span class="absolute -top-2 -right-1 text-sm drop-shadow" title="本週審核完成率 ${kpiThis.rate}%，未達 ${KPI_CARE_THRESHOLD}%">🌞</span>` : ''}
                         <div class="text-[10px] font-bold opacity-80">本週</div>
                         <div class="text-[11px] font-extrabold">${kpiText_(kpiThis)}</div>
                     </div>
                     <div class="relative rounded-lg px-1 py-1.5 ${kpiToneClass_(kpiLast)}">
-                        ${isKpiFull_(kpiLast) ? '<span class="absolute -top-2 -right-1 text-sm drop-shadow" title="上週的項目全部完成！">👑</span>' : ''}
+                        ${isKpiFull_(kpiLast) ? '<span class="absolute -top-2 -right-1 text-sm drop-shadow" title="上週的項目全部完成！">👑</span>' : ''}${isKpiLow_(kpiLast) ? `<span class="absolute -top-2 -right-1 text-sm drop-shadow" title="上週審核完成率 ${kpiLast.rate}%，未達 ${KPI_CARE_THRESHOLD}%">🌞</span>` : ''}
                         <div class="text-[10px] font-bold opacity-80">上週</div>
                         <div class="text-[11px] font-extrabold">${kpiText_(kpiLast)}</div>
                     </div>
@@ -4811,10 +4884,11 @@ function renderAssignTaskStudentCheckboxes() {
     if (!container) return;
     container.innerHTML = window.appData.students.map(s => `
         <label class="flex items-center space-x-1.5 font-bold text-slate-700 cursor-pointer">
-            <input type="checkbox" value="${s.id}" class="task-st-cb rounded text-indigo-600">
+            <input type="checkbox" value="${s.id}" onchange="syncSelectAll_('task-st-cb', 'taskSelectAll')" class="task-st-cb rounded text-indigo-600">
             <span>${s.school ? `<span class="text-slate-400 font-medium">${escHtml_(s.school)}</span> ` : ''}${escHtml_(s.name)} (${escHtml_(s.grade)})</span>
         </label>
     `).join('');
+    syncSelectAll_('task-st-cb', 'taskSelectAll');
 }
 
 function toggleMultiSelectMode() {
@@ -5022,6 +5096,7 @@ function renderStudentKpiCards_(studentId) {
         const bar = k.total === 0 ? "bg-slate-200" : (k.rate >= KPI_CARE_THRESHOLD ? "bg-emerald-500" : "bg-amber-500");
         el.innerHTML = `
             ${full ? `<span class="absolute -top-3 right-3 text-2xl drop-shadow animate-bounce" title="${title}的項目全部完成！">👑</span>` : ""}
+            ${isKpiLow_(k) ? `<span class="absolute -top-3 right-3 text-2xl drop-shadow" title="${title}審核完成率 ${k.rate}%，未達 ${KPI_CARE_THRESHOLD}%">🌞</span>` : ""}
             <div class="flex items-center justify-between gap-2">
                 <span class="text-xs font-bold text-slate-600"><i class="fa-solid fa-calendar-week text-indigo-500 mr-1"></i>${title}</span>
                 <span class="text-[10px] text-slate-400">${getWeekLabel_(offset)}</span>
@@ -5068,8 +5143,16 @@ function renderStudentDashboardContentRaw_() {
     renderStudentKpiCards_(student.id);
 
     // 警告標章與皇冠獎章邏輯
-    const isWarning = (hwTasks.length > 0 && hwRate < 80) || (examTasks.length > 0 && examRate < 80);
+    // 進度完成率警告：上週或本週的老師審核完成率未達 80% 就跳出來，並告知是哪一週
+    const kThis = getStudentKpi(student.id, 'this');
+    const kLast = getStudentKpi(student.id, 'last');
+    const lowWeeks = [];
+    if (isKpiLow_(kLast)) lowWeeks.push(`上週（${getWeekLabel_(-1)}）審核完成率只有 ${kLast.rate}%`);
+    if (isKpiLow_(kThis)) lowWeeks.push(`本週（${getWeekLabel_(0)}）審核完成率只有 ${kThis.rate}%`);
+    const isWarning = lowWeeks.length > 0;
     document.getElementById("studentWarningBanner").classList.toggle("hidden", !isWarning);
+    const warnText = document.getElementById("studentWarningText");
+    if (warnText && isWarning) warnText.innerText = `${lowWeeks.join("；")}，未達 ${KPI_CARE_THRESHOLD}%。請儘速完成作業並請老師審核喔！`;
 
     const isAllCompleted = isStudentAllCompleted(student.id);
     document.getElementById("crownBadge").classList.toggle("hidden", !isAllCompleted);
@@ -5433,13 +5516,7 @@ function prepTeacherLogin_(adminMode) {
 }
 function toggleAdminLogin_() { prepTeacherLogin_(!window._adminLoginMode); document.getElementById("teacherPwdInput").value = ""; document.getElementById("teacherPwdError").classList.add("hidden"); }
 
-/* 公開畫面（登入選單、跑馬燈）姓名中間改成 O，且不顯示學校 */
-function maskName_(name) {
-    const c = [...String(name || "").trim()];
-    if (c.length <= 1) return c.join("");
-    if (c.length === 2) return c[0] + "O";
-    return c[0] + "O".repeat(c.length - 2) + c[c.length - 1];
-}
+/* 學生登入選單：姓名遮字（maskName_ 沿用正式版：第二個字改 O）、不顯示學校 */
 function loginStudentLabel_(s) { return [maskName_(s.name), s.grade].filter(Boolean).join(" "); }
 function fillLoginStudents_() {
     const cid = document.getElementById("loginClassSelect").value;

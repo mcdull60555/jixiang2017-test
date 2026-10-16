@@ -3008,7 +3008,7 @@ function renderMarquee_(now = twNow_()) {
     if (showChampions) {
         const medals = ["🥇", "🥈", "🥉"];
         const names = list.map((c, i) =>
-            `${medals[i] || "🌟"} ${escHtml_(c.name)}（${escHtml_([c.school, c.grade].filter(Boolean).join(" "))}）`).join("　");
+            `${medals[i] || "🌟"} ${escHtml_(maskName_(c.name))}${c.grade ? "（" + escHtml_(c.grade) + "）" : ""}`).join("　");
         const range = champions.weekStart && champions.weekEnd ? `（${champions.weekStart.slice(5).replace("-", "/")}～${champions.weekEnd.slice(5).replace("-", "/")}）` : "";
         html = `🎉 恭喜以下同學上週${range}完成所有進度！　${names}　太棒了，繼續保持！🎉`;
     } else {
@@ -5411,12 +5411,20 @@ function prepTeacherLogin_(adminMode) {
 }
 function toggleAdminLogin_() { prepTeacherLogin_(!window._adminLoginMode); document.getElementById("teacherPwdInput").value = ""; document.getElementById("teacherPwdError").classList.add("hidden"); }
 
+/* 公開畫面（登入選單、跑馬燈）姓名中間改成 O，且不顯示學校 */
+function maskName_(name) {
+    const c = [...String(name || "").trim()];
+    if (c.length <= 1) return c.join("");
+    if (c.length === 2) return c[0] + "O";
+    return c[0] + "O".repeat(c.length - 2) + c[c.length - 1];
+}
+function loginStudentLabel_(s) { return [maskName_(s.name), s.grade].filter(Boolean).join(" "); }
 function fillLoginStudents_() {
     const cid = document.getElementById("loginClassSelect").value;
     const ids = new Set(((window.appData.classStudents) || []).filter(x => x.classId === cid).map(x => x.studentId));
     const list = sortStudentsByGradeSchool_(window.appData.students.filter(s => ids.has(s.id)));
     document.getElementById("loginStudentSelect").innerHTML = list.length
-        ? list.map(s => `<option value="${s.id}">${_esc(studentOptionLabel_(s))}</option>`).join("")
+        ? list.map(s => `<option value="${s.id}">${_esc(loginStudentLabel_(s))}</option>`).join("")
         : `<option value="">（這個班還沒有學生）</option>`;
 }
 function openStudentLoginModal() {

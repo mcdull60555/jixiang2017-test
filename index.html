@@ -145,7 +145,13 @@
     <div id="adminView" class="hidden max-w-5xl mx-auto px-3 sm:px-6 py-4 space-y-4">
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
             <h2 class="font-bold text-slate-800 text-lg"><i class="fa-solid fa-user-shield text-indigo-600 mr-1"></i>管理者後台</h2>
-            <p class="text-xs text-slate-500">只管理帳號與全校共用清單；看不到任何班級的學生、作業或聯絡簿。</p>
+            <p class="text-xs text-slate-500">只管理帳號與全校共用清單；畫面上看不到任何班級的學生、作業或聯絡簿。</p>
+        </div>
+
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-2">
+            <h3 class="font-bold text-slate-800">全校備份</h3>
+            <p class="text-xs text-slate-500">下載一個備份檔，內含所有年級、科目、班級、老師帳號、學生、作業考卷、聯絡簿與送審紀錄（不含密碼）。建議每週下載一次存到電腦或雲端硬碟；檔案含學生資料，請妥善保管。</p>
+            <button onclick="downloadBackup_()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg px-3 py-1.5 text-sm"><i class="fa-solid fa-download mr-1"></i>下載全校備份</button>
         </div>
 
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
@@ -509,6 +515,9 @@
                     <div class="flex items-center space-x-2">
                         <button onclick="openAddExistingModal_()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm px-3 py-2 rounded-lg font-bold transition flex items-center">
                             <i class="fa-solid fa-user-check mr-1"></i> 加入現有學生
+                        </button>
+                        <button onclick="downloadBackup_()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm px-3 py-2 rounded-lg font-bold transition flex items-center" title="下載本班所有資料（不含密碼）">
+                            <i class="fa-solid fa-download mr-1"></i> 下載備份
                         </button>
                         <button onclick="openBatchAddStudentModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-3 py-2 rounded-lg font-bold transition flex items-center">
                             <i class="fa-solid fa-users-line mr-1"></i> 批次新增學生
@@ -1959,6 +1968,15 @@ async function sbAdminOp_(body) {
     return ok();
 }
 
+/* ---------- 備份下載（老師：本班；管理者：全校；不含任何密碼） ---------- */
+async function sbBackup_() {
+    const profile = await sbProfile_();
+    if (profile.role !== "teacher" && profile.role !== "admin") throw sbUnauthorized_();
+    const { data, error } = await sb.rpc("backup_data");
+    if (error) throw sbFriendlyErr_(error, "備份失敗");
+    return { status: "success", backup: data };
+}
+
 /* 畫面程式唯一的後端出入口（名稱沿用 gasPost_，其他程式碼不用改） */
 async function gasPost_(action, bodyObj) {
     const body = bodyObj || {};
@@ -1971,6 +1989,7 @@ async function gasPost_(action, bodyObj) {
         case "save": return sbSave_(body);
         case "addExisting": return sbAddExisting_(body);
         case "adminOp": return sbAdminOp_(body);
+        case "backup": return sbBackup_(body);
         default:
             return { status: "error", message: "未知的 action：" + action };
     }
@@ -5643,6 +5662,34 @@ function adminDelGrade_(b) { if (confirm("確定刪除年級「" + b.dataset.n +
 function adminAddSubject_() { const n = document.getElementById("admNewSubject").value.trim(); if (n) adminDo_("addSubject", { name: n }, "科目已新增"); }
 function adminDelSubject_(b) { if (confirm("確定刪除科目「" + b.dataset.n + "」？所有班使用該科目的項目都會一併刪除。")) adminDo_("deleteSubject", { name: b.dataset.n }, "科目已刪除"); }
 function adminChangeMyPin_() { const p = document.getElementById("admMyPin").value; if (p) adminDo_("changeMyPin", { pin: p }, "密碼已修改").then(ok => { if (ok) document.getElementById("admMyPin").value = ""; }); }
+
+
+/* ----- 備份下載 ----- */
+async function downloadBackup_() {
+    showBusy_("正在準備備份檔…");
+    let ok = false, msg = "";
+    try {
+        const r = await gasPost_("backup", {});
+        if (r.status !== "success" || !r.backup) throw new Error(r.message || "備份失敗");
+        const b = r.backup;
+        const d = new Date(), z = n => String(n).padStart(2, "0");
+        const stamp = d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + "_" + z(d.getHours()) + z(d.getMinutes());
+        let who = "全校";
+        if (b.scope === "class") who = ((b.classes || [])[0] || {}).name || "本班";
+        const fname = "基翔小學通備份_" + who + "_" + stamp + ".json";
+        const blob = new Blob([JSON.stringify(b, null, 1)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url; link.download = fname;
+        document.body.appendChild(link); link.click(); link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        const n = k => (b[k] || []).length;
+        ok = true;
+        msg = "備份已下載：" + fname + "\n學生 " + n("students") + " 位、作業考卷 " + n("tasks") + " 筆、聯絡簿 " + n("contact_book") + " 天、送審紀錄 " + n("submit_log") + " 筆。\n（不含密碼，請把檔案存到安全的地方）";
+    } catch (e) { msg = e.message || String(e); }
+    finally { hideBusy_(); }
+    alert((ok ? "✅ " : "⚠️ ") + msg);
+}
 
     </script>
 </body>

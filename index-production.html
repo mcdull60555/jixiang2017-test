@@ -1006,8 +1006,8 @@
                 <input id="admNewTLogin" autocomplete="off" placeholder="t_wang" class="border border-slate-300 rounded-lg px-3 py-2 w-full font-mono"></label>
             <label class="block space-y-1"><span class="text-xs font-bold text-slate-600">老師姓名</span>
                 <input id="admNewTName" placeholder="王老師" class="border border-slate-300 rounded-lg px-3 py-2 w-full"></label>
-            <label class="block space-y-1"><span class="text-xs font-bold text-slate-600">負責班級</span>
-                <select id="admNewTClass" class="border border-slate-300 rounded-lg px-3 py-2 w-full"></select></label>
+            <div class="space-y-1"><span class="text-xs font-bold text-slate-600">負責班級（可複選）</span>
+                <div id="admNewTClass" class="border border-slate-300 rounded-lg divide-y max-h-40 overflow-y-auto"></div></div>
             <label class="block space-y-1"><span class="text-xs font-bold text-slate-600">登入密碼（4～64 字元）</span>
                 <span class="relative block">
                     <input id="admNewTPin" type="password" autocomplete="new-password" onkeydown="if(event.key==='Enter') adminCreateTeacher_()" class="border border-slate-300 rounded-lg pl-3 pr-10 py-2 w-full">
@@ -1040,8 +1040,8 @@
             <div class="text-xs text-slate-500">帳號：<span id="editTeacherLogin" class="font-mono"></span>（帳號不能修改）</div>
             <label class="block space-y-1"><span class="text-xs font-bold text-slate-600">老師姓名</span>
                 <input id="editTeacherName" class="border border-slate-300 rounded-lg px-3 py-2 w-full" onkeydown="if(event.key==='Enter') adminSaveTeacher_()"></label>
-            <label class="block space-y-1"><span class="text-xs font-bold text-slate-600">負責班級</span>
-                <select id="editTeacherClass" class="border border-slate-300 rounded-lg px-3 py-2 w-full"></select></label>
+            <div class="space-y-1"><span class="text-xs font-bold text-slate-600">負責班級（可複選）</span>
+                <div id="editTeacherClass" class="border border-slate-300 rounded-lg divide-y max-h-48 overflow-y-auto"></div></div>
             <div class="flex gap-2 pt-1">
                 <button onclick="closeModal('editTeacherModal')" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2 rounded-xl text-sm">取消</button>
                 <button onclick="adminSaveTeacher_()" class="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-xl text-sm">儲存</button>
@@ -1548,6 +1548,8 @@ async function sbFetchAdminView_(profile) {
         sb.from("classes").select("id,name,sort_order").order("sort_order").order("name"),
         sb.from("profiles").select("id,login_id,display_name,class_id,sort_order,allowed_grades").eq("role", "teacher").order("sort_order").order("login_id")
     ]);
+    const tcRes = await sb.from("teacher_classes").select("teacher_id,class_id");
+    const tcRows = tcRes.error ? null : (tcRes.data || []); // 尚未安裝階段 K 時退回單一班級
     const gi = sbGradeInfo_(sbCheck_(gRes, "讀取年級失敗"));
     return {
         me: { role: "admin", loginId: profile.login_id || "admin", name: profile.display_name || "管理者", classId: "", className: "" },
@@ -1557,13 +1559,30 @@ async function sbFetchAdminView_(profile) {
         students: [], tasks: [], contactBook: [], submitLog: [],
         champions: { weekStart: "", weekEnd: "", list: [] },
         classes: sbCheck_(cl, "讀取班級失敗").map(c => ({ id: c.id, name: c.name })),
-        teachers: sbCheck_(tc, "讀取老師失敗").map(r => ({ id: r.id, loginId: r.login_id, name: r.display_name || r.login_id, classId: r.class_id || "", allowedGrades: Array.isArray(r.allowed_grades) ? r.allowed_grades : [] }))
+        teachers: sbCheck_(tc, "讀取老師失敗").map(r => ({ id: r.id, loginId: r.login_id, name: r.display_name || r.login_id, classId: r.class_id || "",
+            classIds: tcRows ? tcRows.filter(x => x.teacher_id === r.id).map(x => x.class_id) : (r.class_id ? [r.class_id] : []),
+            allowedGrades: Array.isArray(r.allowed_grades) ? r.allowed_grades : [] })),
+        multiClass: !!tcRows
     };
+}
+
+async function sbTeacherClassIds_(profile) {
+    const r = await sb.from("teacher_classes").select("class_id").eq("teacher_id", profile.id);
+    if (r.error) return profile.class_id ? [profile.class_id] : []; // 尚未安裝階段 K
+    return (r.data || []).map(x => x.class_id);
 }
 
 async function sbFetchView_(profile) {
     if (profile.role === "admin") return sbFetchAdminView_(profile);
     const isTeacher = profile.role === "teacher";
+    let myClassIds = [];
+    if (isTeacher) {
+        myClassIds = await sbTeacherClassIds_(profile);
+        if ((!profile.class_id || !myClassIds.includes(profile.class_id)) && myClassIds.length) {
+            const sw = await sb.rpc("teacher_switch_class", { p_class: myClassIds[0] });
+            if (!sw.error) { _sbProfile = null; profile = await sbProfile_(); }
+        }
+    }
     const sinceIso = new Date(Date.now() - SB_LOG_KEEP_DAYS * 86400000).toISOString();
     const [gRes, sRes, stRes, taskRows, cbRes, chRes, logRes, clRes, csRes] = await Promise.all([
         sb.from("grades").select("name,avatar,sort_order").order("sort_order").order("name"),
@@ -1597,7 +1616,8 @@ async function sbFetchView_(profile) {
     };
     _sbCache = { uid: profile.id, tasks: view.tasks, log: isTeacher ? sbLogRowsSafe_(logRes) : null };
     const myClass = view.classes.find(c => c.id === profile.class_id);
-    view.me = { role: profile.role, loginId: profile.login_id || "", name: profile.display_name || "", classId: profile.class_id || "", className: myClass ? myClass.name : "", allowedGrades: Array.isArray(profile.allowed_grades) ? profile.allowed_grades : [] };
+    view.me = { role: profile.role, loginId: profile.login_id || "", name: profile.display_name || "", classId: profile.class_id || "", className: myClass ? myClass.name : "", allowedGrades: Array.isArray(profile.allowed_grades) ? profile.allowed_grades : [],
+                myClasses: isTeacher ? view.classes.filter(c => myClassIds.includes(c.id)) : [] };
     if (isTeacher) {
         view.submitLog = sbCheck_(logRes, "讀取送審紀錄失敗").map(sbMapLog_).reverse(); // 由舊到新
     }
@@ -1845,6 +1865,8 @@ function sbFriendlyErr_(error, fallback) {
     const e = sbErr_(error, fallback);
     const code = error && error.code;
     if (/grade not allowed/.test((error && error.message) || "")) e.message = "這位老師只能管理被指定的年級，請聯絡管理者調整。";
+    else if (/class not assigned/.test((error && error.message) || "")) e.message = "你沒有負責這個班級，請聯絡管理者。";
+    else if (/admin_save_teacher|teacher_switch_class|teacher_classes/.test((error && error.message) || "")) e.message = "資料庫還沒安裝「一位老師多個班級」的更新（階段 K），請聯絡管理者。";
     else if (code === "23505") e.message = "有重複的資料（同一位學生、類型、科目、名稱、日期都相同的項目只能有一筆，或學生編號重複）。";
     else if (code === "23503") e.message = "資料關聯有誤（例如學生、年級或科目不存在，或這個年級／科目還在使用中）。";
     else if (code === "22023") e.message = "資料格式不正確：" + ((error && error.message) || "");
@@ -2005,7 +2027,11 @@ async function sbAdminOp_(body) {
     const op = body.op;
     const ok = () => ({ status: "success" });
     if (op === "createTeacher") {
-        sbDo_(await sb.rpc("admin_create_teacher", { p_login: String(a.loginId || "").trim().toLowerCase(), p_name: a.name, p_pin: a.pin, p_class: a.classId || null }), "新增老師失敗");
+        const ids = Array.isArray(a.classIds) ? a.classIds.filter(Boolean) : (a.classId ? [a.classId] : []);
+        const res = sbDo_(await sb.rpc("admin_create_teacher", { p_login: String(a.loginId || "").trim().toLowerCase(), p_name: a.name, p_pin: a.pin, p_class: ids[0] || null }), "新增老師失敗");
+        if (ids.length > 1 && res && res.id) sbDo_(await sb.rpc("admin_save_teacher", { p_id: res.id, p_name: a.name, p_classes: ids }), "設定老師班級失敗");
+    } else if (op === "saveTeacher") {
+        sbDo_(await sb.rpc("admin_save_teacher", { p_id: a.id, p_name: a.name, p_classes: a.classIds || [] }), "儲存老師失敗");
     } else if (op === "updateTeacher") {
         sbDo_(await sb.rpc("admin_update_teacher", { p_id: a.id, p_name: a.name, p_class: a.classId || null }), "修改老師失敗");
     } else if (op === "setTeacherPin") {
@@ -2049,6 +2075,16 @@ async function sbAdminOp_(body) {
     return ok();
 }
 
+/* ---------- 老師切換目前的班級 ---------- */
+async function sbSwitchClass_(body) {
+    const profile = await sbProfile_();
+    if (profile.role !== "teacher") throw sbUnauthorized_();
+    const { error } = await sb.rpc("teacher_switch_class", { p_class: String(body.classId || "") });
+    if (error) throw sbFriendlyErr_(error, "切換班級失敗");
+    _sbProfile = null; _sbCache = null;
+    return { status: "success" };
+}
+
 /* ---------- 備份下載（老師：本班；管理者：全校；不含任何密碼） ---------- */
 async function sbBackup_() {
     const profile = await sbProfile_();
@@ -2070,6 +2106,7 @@ async function gasPost_(action, bodyObj) {
         case "save": return sbSave_(body);
         case "addExisting": return sbAddExisting_(body);
         case "adminOp": return sbAdminOp_(body);
+        case "switchClass": return sbSwitchClass_(body);
         case "backup": return sbBackup_(body);
         default:
             return { status: "error", message: "未知的 action：" + action };
@@ -5634,7 +5671,37 @@ function renderRoleViewHook_() {
         return true;
     }
     document.getElementById("switchRoleBtn").classList.remove("hidden");
+    renderClassSwitcher_();
     return false;
+}
+/* 老師負責兩個以上的班：老師畫面最上方顯示「目前班級」切換 */
+function renderClassSwitcher_() {
+    const me = (window.appData && window.appData.me) || {};
+    const tv = document.getElementById("teacherView");
+    let bar = document.getElementById("classSwitchBar");
+    const show = isTeacherLoggedIn && me.role === "teacher" && (me.myClasses || []).length > 1;
+    if (!show) { if (bar) bar.classList.add("hidden"); return; }
+    if (!bar) {
+        bar = document.createElement("div");
+        bar.id = "classSwitchBar";
+        bar.className = "bg-white rounded-xl border border-indigo-200 shadow-sm px-3 py-2.5 flex items-center gap-2 text-sm";
+        tv.insertBefore(bar, tv.firstChild);
+    }
+    bar.classList.remove("hidden");
+    bar.innerHTML = `<i class="fa-solid fa-people-roof text-indigo-500"></i><span class="font-bold text-slate-600 whitespace-nowrap">目前班級</span>
+        <select id="classSwitchSelect" onchange="switchTeacherClass_(this.value)" class="flex-1 min-w-0 border border-slate-300 rounded-lg px-2 py-1.5 font-bold text-indigo-700">
+        ${me.myClasses.map(c => `<option value="${_esc(c.id)}" ${c.id === me.classId ? "selected" : ""}>${_esc(c.name)}</option>`).join("")}</select>`;
+}
+async function switchTeacherClass_(cid) {
+    const me = (window.appData && window.appData.me) || {};
+    if (!cid || cid === me.classId) return;
+    showBusy_("切換班級中…");
+    try {
+        const r = await gasPost_("switchClass", { classId: cid });
+        if (r.status !== "success") throw new Error(r.message || "切換班級失敗");
+        await refreshFullData_();
+    } catch (e) { alert("⚠️ " + (e.message || e)); renderClassSwitcher_(); }
+    finally { hideBusy_(); }
 }
 function teacherGrades_() {
     const all = (window.appData && window.appData.grades) || [];
@@ -5728,7 +5795,7 @@ function renderAdmin_() {
     const classOpts = (sel) => `<option value="">（未分配）</option>` + classes.map(c => `<option value="${_esc(c.id)}" ${c.id === sel ? "selected" : ""}>${_esc(c.name)}</option>`).join("");
     document.getElementById("adminTeacherList").innerHTML = (a.teachers || []).map(t => {
         const grades = t.allowedGrades || [];
-        const cls = classes.find(c => c.id === t.classId);
+        const tCls = classes.filter(c => (t.classIds || (t.classId ? [t.classId] : [])).includes(c.id));
         const avatar = teacherAvatar_(t, a.gradeAvatars || {});
         return `
         <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 transition space-y-3 text-sm" data-tid="${_esc(t.id)}" draggable="true">
@@ -5738,13 +5805,17 @@ function renderAdmin_() {
                     <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-xl shrink-0">${avatar}</div>
                     <div class="min-w-0">
                         <h4 class="font-bold text-slate-800 text-sm sm:text-base truncate">${_esc(t.name || "（未命名）")}</h4>
-                        <p class="text-xs text-slate-400 truncate"><span class="font-mono">${_esc(t.loginId)}</span> · ${cls ? _esc(cls.name) : "未分配班級"}</p>
+                        <p class="text-xs text-slate-400 truncate font-mono">${_esc(t.loginId)}</p>
                     </div>
                 </div>
                 <div class="flex shrink-0 text-slate-400">
                     <button onclick="adminMove_(this,'[data-tid]',-1)" class="px-1.5 py-1 hover:text-indigo-600" title="往前移">▲</button>
                     <button onclick="adminMove_(this,'[data-tid]',1)" class="px-1.5 py-1 hover:text-indigo-600" title="往後移">▼</button>
                 </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-1 text-xs">
+                <span class="text-slate-500 font-bold mr-1">負責班級</span>
+                ${tCls.length ? tCls.map(c => `<span class="bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded-full">${_esc(c.name)}</span>`).join("") : `<span class="bg-rose-50 text-rose-600 font-bold px-2 py-0.5 rounded-full">未分配</span>`}
             </div>
             <div class="flex flex-wrap items-center gap-1 text-xs">
                 <span class="text-slate-500 font-bold mr-1">可管理年級</span>
@@ -5826,8 +5897,7 @@ function adminClearInputs_(ids) {
 }
 function adminOpenNewTeacher_() {
     adminClearInputs_(["admNewTLogin", "admNewTName", "admNewTPin"]);
-    const sel = document.getElementById("admNewTClass");
-    sel.innerHTML = `<option value="">（未分配）</option>` + (window.appData.classes || []).map(c => `<option value="${_esc(c.id)}">${_esc(c.name)}</option>`).join("");
+    document.getElementById("admNewTClass").innerHTML = classCheckboxes_([]);
     openModal("newTeacherModal");
     setTimeout(() => document.getElementById("admNewTLogin").focus(), 50);
 }
@@ -5839,23 +5909,36 @@ function adminOpenNewClass_() {
 function adminCreateTeacher_() {
     const g = id => document.getElementById(id).value.trim();
     if (!g("admNewTLogin") || !g("admNewTName") || !g("admNewTPin")) { alert("⚠️ 請填寫老師帳號、姓名與密碼"); return; }
-    adminDo_("createTeacher", { loginId: g("admNewTLogin"), name: g("admNewTName"), pin: g("admNewTPin"), classId: g("admNewTClass") }, "老師已新增")
+    const ids = checkedClassIds_("admNewTClass");
+    if ((window.appData.multiClass === false) && ids.length > 1) { alert("⚠️ 資料庫還沒安裝「一位老師多個班級」的更新，目前只能選一個班。"); return; }
+    adminDo_("createTeacher", { loginId: g("admNewTLogin"), name: g("admNewTName"), pin: g("admNewTPin"), classIds: ids }, "老師已新增")
         .then(ok => { if (ok) { closeModal("newTeacherModal"); adminClearInputs_(["admNewTLogin", "admNewTName", "admNewTPin"]); } });
 }
+/* 班級勾選清單（新增／編輯老師共用） */
+function classCheckboxes_(selected) {
+    const cls = (window.appData && window.appData.classes) || [];
+    if (!cls.length) return `<div class="text-xs text-slate-400 px-3 py-2">還沒有班級，請先新增班級</div>`;
+    return cls.map(c => `<label class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-slate-50"><input type="checkbox" value="${_esc(c.id)}" ${selected.includes(c.id) ? "checked" : ""} class="rounded text-indigo-600"><span>${_esc(c.name)}</span></label>`).join("");
+}
+function checkedClassIds_(boxId) { return [...document.querySelectorAll("#" + boxId + " input:checked")].map(i => i.value); }
 let _editTeacherTid = null;
 function adminOpenEditTeacher_(b) {
     const r = _row(b, "[data-tid]"); _editTeacherTid = r.dataset.tid;
     const t = (window.appData.teachers || []).find(x => x.id === _editTeacherTid) || {};
     document.getElementById("editTeacherLogin").innerText = t.loginId || "";
     document.getElementById("editTeacherName").value = t.name || "";
-    document.getElementById("editTeacherClass").innerHTML = `<option value="">（未分配）</option>` + (window.appData.classes || []).map(c => `<option value="${_esc(c.id)}" ${c.id === t.classId ? "selected" : ""}>${_esc(c.name)}</option>`).join("");
+    const mine = t.classIds || (t.classId ? [t.classId] : []);
+    document.getElementById("editTeacherClass").innerHTML = classCheckboxes_(mine);
     openModal("editTeacherModal");
 }
 function adminSaveTeacher_() {
     const name = document.getElementById("editTeacherName").value.trim();
     if (!name) { alert("⚠️ 請輸入老師姓名"); return; }
     closeModal("editTeacherModal");
-    adminDo_("updateTeacher", { id: _editTeacherTid, name: name, classId: document.getElementById("editTeacherClass").value }, "已儲存");
+    const ids = checkedClassIds_("editTeacherClass");
+    if ((window.appData.multiClass === false) && ids.length > 1) { alert("⚠️ 資料庫還沒安裝「一位老師多個班級」的更新，目前只能選一個班。"); return; }
+    if (window.appData.multiClass === false) adminDo_("updateTeacher", { id: _editTeacherTid, name: name, classId: ids[0] || "" }, "已儲存");
+    else adminDo_("saveTeacher", { id: _editTeacherTid, name: name, classIds: ids }, "已儲存");
 }
 let _resetPinTid = null;
 function adminResetPin_(b) {

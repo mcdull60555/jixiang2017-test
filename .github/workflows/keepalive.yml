@@ -1,0 +1,47 @@
+# 防止 Supabase 免費專案因 7 天沒有使用而自動暫停
+# 每 2 天自動讀一次資料庫（只讀年級清單，約 1 KB，不改任何資料）
+name: Supabase 防休眠
+
+on:
+  schedule:
+    - cron: "17 2 */2 * *"   # 每 2 天，台灣時間上午 10:17
+  workflow_dispatch:          # 也可以在 Actions 頁面手動按 Run
+
+permissions:
+  contents: write
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 讀一次資料庫
+        env:
+          SUPABASE_URL: https://jflnvliefjfxhfwjzqdi.supabase.co
+          SUPABASE_KEY: sb_publishable_ZVT08ujYz6NmsowKmqBNng_JxBJaVmb   # 公開金鑰（publishable），網頁裡本來就有，不是密碼
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o body.txt -w "%{http_code}" \
+              "$SUPABASE_URL/rest/v1/grades?select=name&limit=1" \
+              -H "apikey: $SUPABASE_KEY" -H "Authorization: Bearer $SUPABASE_KEY")
+            echo "第 $i 次：HTTP $code"; cat body.txt; echo
+            [ "$code" = "200" ] && exit 0
+            sleep 20
+          done
+          echo "連不到資料庫，專案可能已經暫停，請到 Supabase 後台按 Restore"; exit 1
+
+      # GitHub 會停用 60 天沒有任何提交的公開專案排程，這一步每約 45 天自動留一筆紀錄，讓排程不會被停用
+      - uses: actions/checkout@v4
+      - name: 必要時留一筆紀錄
+        run: |
+          last=$(git log -1 --format=%ct)
+          now=$(date +%s)
+          if [ $(( (now - last) / 86400 )) -ge 45 ]; then
+            date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/keepalive-last.txt
+            git config user.name "keepalive-bot"
+            git config user.email "keepalive-bot@users.noreply.github.com"
+            git add .github/keepalive-last.txt
+            git commit -m "防休眠：保持排程啟用"
+            git push
+          else
+            echo "最近有提交，不需要留紀錄"
+          fi

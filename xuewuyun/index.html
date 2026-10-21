@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>【測試版】基翔學務雲</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --bg: #F1F5F9; --card: #FFFFFF; --line: #E2E8F0; --line-2: #CBD5E1;
+    --text: #1E293B; --muted: #64748B; --muted-2: #475569;
+    --blue: #1660D6; --blue-d: #0F4FB8; --blue-l: #DBEAFE; --navy: #0F3A80;
+    --gold: #F5B301; --gold-l: #FEF3C7; --gold-d: #92400E;
+    --green: #047857; --green-l: #D1FAE5; --rose: #BE123C; --rose-l: #FFE4E6;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif; min-height: 100vh; }
+  button, input, select { font: inherit; }
+  .hidden { display: none !important; }
+  a { color: var(--blue); }
+
+  .hero { background: linear-gradient(90deg, #0F4FB8, #1D8CF0); color: #fff; padding: 0 20px; }
+  .hero-inner { max-width: 1120px; margin: 0 auto; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 40px; height: 40px; border-radius: 11px; background: var(--gold); color: var(--navy); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; flex: 0 0 40px; }
+  .brand-name { font-size: 19px; font-weight: 700; letter-spacing: .5px; }
+  .brand-sub { font-size: 11px; color: #DBEAFE; letter-spacing: .5px; }
+  .chip { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--gold); color: var(--text); }
+  .ghost-btn { min-height: 40px; padding: 0 16px; border-radius: 10px; border: 0; background: rgba(255,255,255,.18); color: #fff; cursor: pointer; font-size: 14px; }
+  .ghost-btn:hover { background: rgba(255,255,255,.28); }
+
+  /* 登入 */
+  #loginView .hero { padding-bottom: 96px; text-align: center; }
+  .login-head { padding: 40px 0 0; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .login-head .logo { width: 60px; height: 60px; font-size: 28px; border-radius: 16px; }
+  .login-head h1 { margin: 0; font-size: 28px; letter-spacing: 1px; }
+  .login-head p { margin: 0; color: #EAF2FF; font-size: 15px; }
+  .login-card { max-width: 420px; margin: -64px auto 32px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px; display: flex; flex-direction: column; gap: 16px; position: relative; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px; background: var(--line); }
+  .seg button { min-height: 44px; border: 0; border-radius: 9px; background: transparent; color: var(--muted-2); cursor: pointer; font-size: 15px; }
+  .seg button[aria-pressed="true"] { background: #fff; color: var(--blue-d); font-weight: 700; }
+  .field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500; color: #334155; }
+  .field input, .field select { min-height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line-2); background: #fff; font-size: 16px; color: var(--text); }
+  .field input:focus, .field select:focus { outline: 2px solid var(--blue); outline-offset: 1px; }
+  #acctInput { text-transform: uppercase; letter-spacing: 2px; font-weight: 700; text-align: center; }
+  #pinInput, #staffPwdInput { letter-spacing: 4px; }
+  .hint { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 0; }
+  .error { font-size: 14px; color: var(--rose); background: var(--rose-l); border-radius: 10px; padding: 10px 12px; margin: 0; }
+  .primary { min-height: 52px; border: 0; border-radius: 12px; background: var(--blue); color: #fff; font-size: 17px; font-weight: 700; cursor: pointer; }
+  .primary:hover { background: var(--blue-d); }
+  .primary:disabled { opacity: .6; cursor: wait; }
+  .foot { text-align: center; font-size: 13px; color: var(--muted); padding: 0 20px 80px; }
+
+  /* 入口 */
+  #portalView .hero { padding-bottom: 110px; }
+  .greet { padding: 18px 0 0; }
+  .greet h1 { margin: 0; font-size: 30px; }
+  .greet p { margin: 8px 0 0; color: #EAF2FF; font-size: 15px; }
+  .portal-main { max-width: 1120px; margin: -80px auto 0; padding: 0 20px 80px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+  .card { display: flex; flex-direction: column; gap: 14px; padding: 24px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); text-decoration: none; color: var(--text); }
+  a.card:hover { border-color: var(--blue); }
+  .card.off { opacity: .75; }
+  .card-icon { width: 54px; height: 54px; border-radius: 15px; display: flex; align-items: center; justify-content: center; }
+  .card-title { font-size: 21px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card-en { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .card-desc { font-size: 15px; color: var(--muted-2); line-height: 1.6; margin: 0; }
+  .card-note { font-size: 12px; color: var(--muted); margin: 0; }
+  .card-cta { margin-top: auto; display: flex; align-items: center; justify-content: center; min-height: 46px; border-radius: 12px; background: var(--blue); color: #fff; font-size: 16px; font-weight: 700; }
+  .card.off .card-cta { background: var(--line); color: var(--muted-2); }
+  .tag { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--muted-2); }
+
+  .test-tag { position: fixed; left: 8px; bottom: 8px; z-index: 99; background: #7c3aed; color: #fff; font: 700 11px/1 sans-serif; padding: 6px 10px; border-radius: 999px; opacity: .9; pointer-events: none; }
+  .busy { position: fixed; inset: 0; background: rgba(15,23,42,.35); display: flex; align-items: center; justify-content: center; z-index: 100; color: #fff; font-size: 16px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<!-- ==================== 登入 ==================== -->
+<section id="loginView" class="hidden" aria-labelledby="loginTitle">
+  <div class="hero">
+    <div class="hero-inner login-head">
+      <div class="logo" aria-hidden="true">基</div>
+      <div>
+        <h1 id="loginTitle">基翔學務雲</h1>
+        <div class="brand-sub">JX Academic Cloud</div>
+      </div>
+      <p>一個帳號，進入雲點名與學習通</p>
+    </div>
+  </div>
+
+  <form class="login-card" id="loginForm" novalidate>
+    <div class="seg" role="group" aria-label="登入身分">
+      <button type="button" id="tabFamily" aria-pressed="true">學生・家長</button>
+      <button type="button" id="tabStaff" aria-pressed="false">老師・管理者</button>
+    </div>
+
+    <div id="familyFields">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <label class="field">學生帳號
+          <input id="acctInput" type="text" maxlength="8" autocomplete="username" autocapitalize="characters" spellcheck="false" placeholder="例如 JX115001">
+        </label>
+        <label class="field">4 位數密碼
+          <input id="pinInput" type="password" maxlength="4" inputmode="numeric" autocomplete="current-password" placeholder="••••">
+        </label>
+        <p class="hint">學生帳號由補習班提供；忘記帳號或密碼請洽櫃台</p>
+      </div>
+    </div>
+
+    <div id="staffFields" class="hidden">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <label class="field">登入帳號
+          <select id="staffSelect" autocomplete="username"><option value="">讀取中…</option></select>
+        </label>
+        <label class="field">密碼
+          <input id="staffPwdInput" type="password" autocomplete="current-password" placeholder="請輸入密碼">
+        </label>
+        <p class="hint">老師帳號由管理員新增；忘記密碼請洽管理員重設</p>
+      </div>
+    </div>
+
+    <p id="loginError" class="error hidden" role="alert"></p>
+    <button type="submit" class="primary" id="loginBtn">登入</button>
+  </form>
+  <p class="foot">閒置超過 60 分鐘會自動登出</p>
+</section>
+
+<!-- ==================== 入口 ==================== -->
+<section id="portalView" class="hidden">
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="topbar">
+        <div class="brand">
+          <div class="logo" aria-hidden="true">基</div>
+          <div>
+            <div class="brand-name">基翔學務雲</div>
+            <div class="brand-sub">JX Academic Cloud</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="chip" id="roleChip"></span>
+          <button type="button" class="ghost-btn" id="logoutBtn">登出</button>
+        </div>
+      </div>
+      <div class="greet">
+        <h1 id="greetTitle"></h1>
+        <p id="greetSub"></p>
+      </div>
+    </div>
+  </div>
+  <main class="portal-main">
+    <div class="cards" id="cards"></div>
+  </main>
+</section>
+
+<div id="busy" class="busy hidden" role="status">處理中，請稍候…</div>
+<div class="test-tag">學務雲 測試版・整合版</div>
+
+<script>
+/* ==================== 設定 ==================== */
+const SUPABASE_URL = "https://jflnvliefjfxhfwjzqdi.supabase.co";      // 測試專案
+const SUPABASE_KEY = "sb_publishable_ZVT08ujYz6NmsowKmqBNng_JxBJaVmb";
+const EMAIL_DOMAIN = "@school.test";
+const LEARNING_URL = "../index.html";                                   // 學習通（測試版）
+const ROLLCALL_URL = "https://mcdull60555.github.io/jixiang2026-rollcall/"; // 雲點名（目前仍是試算表版）
+
+// 和學習通共用同一份登入狀態（同網域、同分頁的 sessionStorage），點進學習通不用再登入一次
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storage: window.sessionStorage, storageKey: "jx-auth" }
+});
+const sbAnon = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: "jx-anon" }
+});
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let mode = "family";
+
+/* ==================== 畫面切換 ==================== */
+function setMode(m) {
+  mode = m;
+  $("tabFamily").setAttribute("aria-pressed", m === "family");
+  $("tabStaff").setAttribute("aria-pressed", m === "staff");
+  $("familyFields").classList.toggle("hidden", m !== "family");
+  $("staffFields").classList.toggle("hidden", m !== "staff");
+  hideError();
+}
+function showError(msg) { $("loginError").textContent = msg; $("loginError").classList.remove("hidden"); }
+function hideError() { $("loginError").classList.add("hidden"); }
+function busy(on) { $("busy").classList.toggle("hidden", !on); $("loginBtn").disabled = !!on; }
+
+async function loadStaffList() {
+  const sel = $("staffSelect");
+  const res = await sbAnon.rpc("list_teachers");
+  const teachers = res.error ? [] : (res.data || []);
+  sel.innerHTML = `<option value="admin">管理員（admin）</option>` +
+    teachers.map(t => `<option value="${esc(t.login_id)}">${esc(t.display_name || t.login_id)}</option>`).join("");
+}
+
+/* ==================== 登入 ==================== */
+async function doLogin(e) {
+  e.preventDefault();
+  hideError();
+  let email, pin, want;
+  if (mode === "family") {
+    const acct = $("acctInput").value.trim().toUpperCase();
+    pin = $("pinInput").value;
+    if (!/^JX[0-9]{6}$/.test(acct)) return showError("請輸入學生帳號，例如 JX115001");
+    if (!/^[0-9]{4}$/.test(pin)) return showError("請輸入 4 位數密碼");
+    email = acct.toLowerCase() + EMAIL_DOMAIN;
+    want = ["student"];
+  } else {
+    const id = $("staffSelect").value;
+    pin = $("staffPwdInput").value;
+    if (!/^[a-z0-9_-]{1,100}$/.test(id)) return showError("請先選擇帳號");
+    if (!pin) return showError("請輸入密碼");
+    email = id + EMAIL_DOMAIN;
+    want = id === "admin" ? ["admin"] : ["teacher"];
+  }
+
+  busy(true);
+  try {
+    // 密碼由伺服器的登入閘門驗證（錯 3 次鎖 1 分鐘）
+    let gate = null;
+    for (let i = 0; i < 3; i++) {
+      gate = await sbAnon.functions.invoke("login", { body: { email, pin } });
+      if (!gate.error && gate.data) break;
+      const st = gate.error && gate.error.context && gate.error.context.status;
+      if ((st && st < 500) || i === 2) break;
+      await new Promise(r => setTimeout(r, 700 * (i + 1)));
+    }
+    if (gate.error || !gate.data) return showError("無法連線，請檢查網路後再試一次");
+    const g = gate.data;
+    if (g.status === "locked") return showError("已連續輸錯 3 次，請 1 分鐘後再試");
+    if (g.status === "denied") {
+      const left = typeof g.remaining === "number" ? g.remaining : null;
+      return showError(left === null ? "帳號或密碼錯誤" : `帳號或密碼錯誤，還有 ${left} 次機會（連續錯 3 次會暫時鎖定 1 分鐘）`);
+    }
+    if (g.status !== "ok") return showError("登入服務暫時無法使用，請稍後再試");
+
+    const set = await sb.auth.setSession({ access_token: g.access_token, refresh_token: g.refresh_token });
+    if (set.error || !set.data.session) return showError("登入失敗，請再試一次");
+
+    const me = await loadMe();
+    if (!me || !want.includes(me.role)) {
+      await sb.auth.signOut({ scope: "local" });
+      return showError("帳號或密碼錯誤");
+    }
+    shareWithLearning(set.data.session, me);
+    $("pinInput").value = ""; $("staffPwdInput").value = "";
+    showPortal(me);
+  } catch (err) {
+    showError("登入時發生錯誤：" + (err.message || err));
+  } finally {
+    busy(false);
+  }
+}
+
+async function loadMe() {
+  const { data: s } = await sb.auth.getSession();
+  if (!s || !s.session) return null;
+  const p = await sb.from("profiles").select("role,student_id,display_name,login_id").eq("id", s.session.user.id).maybeSingle();
+  if (p.error || !p.data) return null;
+  const me = Object.assign({}, p.data);
+  if (me.role === "student") {
+    const st = await sb.from("students").select("name,grade,school,account_code").eq("id", me.student_id).maybeSingle();
+    if (st.data) Object.assign(me, { name: st.data.name, grade: st.data.grade, school: st.data.school, account: st.data.account_code });
+  }
+  return me;
+}
+
+// 學習通讀這幾個欄位判斷是否已登入
+function shareWithLearning(session, me) {
+  try {
+    sessionStorage.setItem("authToken", session.access_token);
+    sessionStorage.setItem("isTeacherLoggedIn", me.role === "student" ? "false" : "true");
+    if (me.role === "student") sessionStorage.setItem("loggedInStudentId", me.student_id);
+    else sessionStorage.removeItem("loggedInStudentId");
+    sessionStorage.setItem("lastActivityTime", String(Date.now()));
+  } catch (_) { /* 忽略 */ }
+}
+
+async function logout() {
+  busy(true);
+  try { await sb.auth.signOut({ scope: "local" }); } catch (_) { /* 忽略 */ }
+  ["authToken", "isTeacherLoggedIn", "loggedInStudentId", "lastActivityTime"].forEach(k => { try { sessionStorage.removeItem(k); } catch (_) {} });
+  busy(false);
+  showLogin();
+}
+
+/* ==================== 入口卡片 ==================== */
+const ICONS = {
+  rollcall: '<svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>',
+  learning: '<svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5h7a3 3 0 013 3v12a2 2 0 00-2-2H2z"/><path d="M22 5h-7a3 3 0 00-3 3v12a2 2 0 012-2h8z"/></svg>',
+  roster: '<svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.5a3.5 3.5 0 010 7M21 20c0-2.6-1.6-4.8-4-5.6"/></svg>',
+  tuition: '<svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>',
+  accounts: '<svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>'
+};
+const CARDS = {
+  rollcall: { title: "雲點名", en: "JX CloudCheck", desc: "點名、預約請假與進班、連續請假、點名日設定", href: ROLLCALL_URL, cta: "進入雲點名", note: "目前仍是試算表版，需要另外登入；搬家完成後會改成免登入", bg: "#DBEAFE", fg: "#0F4FB8" },
+  learning: { title: "學習通", en: "JX Learning", desc: "進度管理、作業派發、送出審核、學習成長、電子聯絡簿", href: LEARNING_URL, cta: "進入學習通", bg: "#E0EAFF", fg: "#1D4ED8" },
+  learningFamily: { title: "學習通", en: "JX Learning", desc: "今日作業、送出審核、電子聯絡簿", href: LEARNING_URL, cta: "進入學習通", bg: "#E0EAFF", fg: "#1D4ED8" },
+  roster: { title: "學生名冊", en: "Student Roster", desc: "學生資料、帳號密碼、聯絡電話、可使用的系統", tag: "建置中", bg: "#FEF3C7", fg: "#92400E" },
+  tuition: { title: "學費管理", en: "Tuition", desc: "產生每月學費單、登記繳費、追蹤未繳", tag: "規劃中", bg: "#D1FAE5", fg: "#047857" },
+  tuitionFamily: { title: "學費單", en: "Tuition", desc: "每月學費明細與繳費紀錄", tag: "規劃中", bg: "#D1FAE5", fg: "#047857" },
+  accounts: { title: "帳號管理", en: "Accounts", desc: "新增老師、指定負責班級、重設密碼、停用帳號", tag: "建置中", bg: "#E2E8F0", fg: "#334155" }
+};
+const BY_ROLE = {
+  admin: ["rollcall", "learning", "roster", "tuition", "accounts"],
+  teacher: ["rollcall", "learning"],
+  student: ["learningFamily", "tuitionFamily"]
+};
+const ICON_OF = { learningFamily: "learning", tuitionFamily: "tuition" };
+
+function cardHtml(key) {
+  const c = CARDS[key];
+  const icon = ICONS[ICON_OF[key] || key];
+  const head = `
+    <div class="card-icon" style="background:${c.bg};color:${c.fg}">${icon}</div>
+    <div>
+      <div class="card-title">${esc(c.title)}${c.tag ? ` <span class="tag">${esc(c.tag)}</span>` : ""}</div>
+      <div class="card-en">${esc(c.en)}</div>
+    </div>
+    <p class="card-desc">${esc(c.desc)}</p>
+    ${c.note ? `<p class="card-note">${esc(c.note)}</p>` : ""}`;
+  if (!c.href) return `<div class="card off" aria-disabled="true">${head}<div class="card-cta">${esc(c.tag || "尚未開放")}</div></div>`;
+  return `<a class="card" href="${esc(c.href)}">${head}<div class="card-cta">${esc(c.cta)}</div></a>`;
+}
+
+function showPortal(me) {
+  const roleName = { admin: "管理員", teacher: "老師", student: "學生・家長" }[me.role] || "";
+  $("roleChip").textContent = roleName;
+  if (me.role === "student") {
+    $("greetTitle").textContent = `您好，${me.name || "同學"}`;
+    $("greetSub").textContent = [me.school, me.grade, me.account].filter(Boolean).join("・");
+  } else {
+    $("greetTitle").textContent = `您好，${me.role === "admin" ? "管理員" : (me.display_name || "老師")}`;
+    $("greetSub").textContent = "選擇要進入的系統";
+  }
+  $("cards").innerHTML = (BY_ROLE[me.role] || []).map(cardHtml).join("");
+  $("loginView").classList.add("hidden");
+  $("portalView").classList.remove("hidden");
+  document.title = "【測試版】基翔學務雲";
+}
+
+function showLogin() {
+  $("portalView").classList.add("hidden");
+  $("loginView").classList.remove("hidden");
+  loadStaffList();
+}
+
+/* ==================== 啟動 ==================== */
+$("tabFamily").addEventListener("click", () => setMode("family"));
+$("tabStaff").addEventListener("click", () => setMode("staff"));
+$("loginForm").addEventListener("submit", doLogin);
+$("logoutBtn").addEventListener("click", logout);
+$("acctInput").addEventListener("input", e => { e.target.value = e.target.value.toUpperCase(); });
+
+(async () => {
+  const last = parseInt(sessionStorage.getItem("lastActivityTime") || "0", 10);
+  if (last && Date.now() - last > 60 * 60 * 1000) { await logout(); return; }
+  const me = await loadMe().catch(() => null);
+  if (me) { sessionStorage.setItem("lastActivityTime", String(Date.now())); showPortal(me); }
+  else showLogin();
+})();
+</script>
+</body>
+</html>

@@ -992,20 +992,17 @@
                     <i class="fa-solid fa-users-rectangle"></i>
                 </div>
                 <h3 class="text-base sm:text-lg font-bold text-slate-800">學生 / 家長驗證登入</h3>
-                <p class="text-xs text-slate-500">選擇學生姓名並輸入 4 位數密碼</p>
+                <p class="text-xs text-slate-500">輸入學生帳號與 4 位數密碼</p>
             </div>
             <div class="space-y-3">
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">選擇班級</label>
-                    <select id="loginClassSelect" onchange="fillLoginStudents_()" class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold"></select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">選擇學生</label>
-                    <select id="loginStudentSelect" class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold"></select>
+                    <label for="loginAccountInput" class="block text-xs font-bold text-slate-600 mb-1">學生帳號</label>
+                    <input type="text" id="loginAccountInput" maxlength="8" autocomplete="username" autocapitalize="characters" spellcheck="false" placeholder="例如 JX115001" class="w-full text-center tracking-wider text-lg font-bold uppercase border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <p class="text-[11px] text-slate-400 text-center mt-1">帳號由補習班提供，忘記請洽櫃台</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1">4 位數個人密碼</label>
-                    <input type="password" id="studentLoginPwdInput" maxlength="4" placeholder="請輸入4位數字" class="w-full text-center tracking-widest text-lg font-bold border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="password" id="studentLoginPwdInput" maxlength="4" inputmode="numeric" autocomplete="current-password" placeholder="請輸入4位數字" class="w-full text-center tracking-widest text-lg font-bold border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <p id="studentLoginError" class="text-xs text-rose-500 text-center mt-1 hidden">密碼不正確！</p>
                 </div>
             </div>
@@ -1566,12 +1563,11 @@ function sbGradeInfo_(rows) {
 
 /* ---------- 登入前：登入選單用的公開名單 ---------- */
 async function sbGetPublic_() {
-    const [g, s, st, cl, cs, tc] = await Promise.all([
+    // 學務雲：登入前不再讀取學生名單（學生改用帳號登入）
+    const [g, s, cl, tc] = await Promise.all([
         sbAnon.from("grades").select("name,avatar,sort_order").order("sort_order").order("name"),
         sbAnon.from("subjects").select("name,sort_order").order("sort_order").order("name"),
-        sbAnon.from("students").select("id,name,school,grade,class_name").order("id"),
         sbAnon.from("classes").select("id,name,sort_order").order("sort_order").order("name"),
-        sbAnon.from("class_students").select("class_id,student_id"),
         sbAnon.rpc("list_teachers")
     ]);
     const gi = sbGradeInfo_(sbCheck_(g, "讀取年級失敗"));
@@ -1581,9 +1577,9 @@ async function sbGetPublic_() {
         subjects: sbCheck_(s, "讀取科目失敗").map(x => x.name),
         grades: gi.grades,
         gradeAvatars: gi.gradeAvatars,
-        students: sbCheck_(st, "讀取學生名單失敗").map(r => sbMapStudent_(r, false)),
+        students: [],
         classes: sbCheck_(cl, "讀取班級失敗").map(c => ({ id: c.id, name: c.name })),
-        classStudents: sbCheck_(cs, "讀取班級名單失敗").map(r => ({ classId: r.class_id, studentId: r.student_id })),
+        classStudents: [],
         teachers: sbCheck_(tc, "讀取老師名單失敗").map(r => ({ loginId: r.login_id, name: r.display_name, classId: r.class_id || "", className: r.class_name || "" }))
     };
 }
@@ -1725,9 +1721,10 @@ async function sbLogin_(body) {
     if (role !== "teacher" && role !== "student" && role !== "admin") return { status: "error", message: "role 不正確" };
     let email;
     if (role === "student") {
-        const sid = String(body.studentId || "");
-        if (!/^[A-Za-z0-9_-]{1,100}$/.test(sid)) return { status: "denied", message: "帳號或密碼錯誤" };
-        email = sid + STUDENT_EMAIL_DOMAIN;
+        // 學務雲：學生帳號 JX + 入學學年 3 碼 + 流水號 3 碼
+        const acct = String(body.account || "").trim().toUpperCase();
+        if (!/^JX[0-9]{6}$/.test(acct)) return { status: "denied", message: "學生帳號格式不正確（例如 JX115001）" };
+        email = acct.toLowerCase() + STUDENT_EMAIL_DOMAIN;
     } else {
         const tid = role === "admin" ? "admin" : String(body.teacherId || "");
         if (!/^[a-z0-9_-]{1,100}$/.test(tid)) return { status: "denied", message: "請先選擇老師" };
@@ -1770,9 +1767,8 @@ async function sbLogin_(body) {
     } catch (e) {
         if (!e.unauthorized) throw e; // 斷線之類：讓畫面程式提示重試
     }
-    const sidWanted = role === "student" ? String(body.studentId) : null;
     const roleOk = profile && (role === "teacher" ? profile.role === "teacher" : profile.role === role);
-    if (!profile || !roleOk || (role === "student" && profile.student_id !== sidWanted)) {
+    if (!profile || !roleOk || (role === "student" && !profile.student_id)) {
         // 帳號存在但沒有對應的身分資料，或身分不符：一律當成帳號或密碼錯誤，並清掉剛建立的登入狀態
         await sb.auth.signOut({ scope: "local" });
         return { status: "denied", message: "帳號或密碼錯誤" };
@@ -2812,22 +2808,25 @@ async function verifyTeacherLogin() {
 }
 
 function openStudentLoginModal() {
-    const select = document.getElementById("loginStudentSelect");
-    select.innerHTML = sortStudentsByGradeSchool_(window.appData.students)
-        .map(s => `<option value="${s.id}">${escHtml_([s.school, maskName_(s.name), s.grade].filter(Boolean).join(" "))}</option>`).join('');
+    document.getElementById("loginAccountInput").value = "";
     document.getElementById("studentLoginPwdInput").value = "";
     document.getElementById("studentLoginError").classList.add("hidden");
     openModal("studentLoginModal");
 }
 
 async function verifyStudentLogin() {
-    const stId = document.getElementById("loginStudentSelect").value;
+    const account = document.getElementById("loginAccountInput").value.trim().toUpperCase();
     const pwd = document.getElementById("studentLoginPwdInput").value;
+    if (!/^JX[0-9]{6}$/.test(account)) {
+        document.getElementById("studentLoginError").innerText = "請輸入學生帳號，例如 JX115001";
+        document.getElementById("studentLoginError").classList.remove("hidden");
+        return;
+    }
     const btn = document.querySelector('[onclick="verifyStudentLogin()"]');
     if (btn) btn.disabled = true;
     showBusy_("登入中，請稍候…");
     try {
-        const result = await gasPost_("login", { role: "student", studentId: stId, pwd: pwd });
+        const result = await gasPost_("login", { role: "student", account: account, pwd: pwd });
         if (result && result.status === "success") {
             // 換成學生身分：先讓原本的老師憑證失效，避免老師/學生身分混在一起
             if (isTeacherLoggedIn && authToken && authToken !== result.token) {
@@ -2835,7 +2834,7 @@ async function verifyStudentLogin() {
             }
             isTeacherLoggedIn = false;
             authToken = result.token;
-            loggedInStudentId = result.studentId || stId;
+            loggedInStudentId = result.studentId;
             currentRole = "student";
             window.appData = normalizeAppData(result.data);
             window._dataVersion = result.version || null;
@@ -5679,7 +5678,7 @@ function prepTeacherLogin_(adminMode) {
     const sel = document.getElementById("teacherLoginSelect");
     const teachers = (window.appData && window.appData.teachers) || [];
     sel.innerHTML = teachers.length
-        ? teachers.map(t => `<option value="${_esc(t.loginId)}">${_esc(t.loginId)}</option>`).join("")
+        ? teachers.map(t => `<option value="${_esc(t.loginId)}">${_esc(t.name || t.loginId)}</option>`).join("")
         : `<option value="">（還沒有老師帳號）</option>`;
     document.getElementById("teacherSelectWrap").classList.toggle("hidden", !!adminMode);
     document.getElementById("teacherLoginTitle").innerText = adminMode ? "管理者登入" : "老師登入";
@@ -5698,9 +5697,7 @@ function fillLoginStudents_() {
         : `<option value="">（這個班還沒有學生）</option>`;
 }
 function openStudentLoginModal() {
-    const classes = (window.appData.classes) || [];
-    document.getElementById("loginClassSelect").innerHTML = classes.map(c => `<option value="${_esc(c.id)}">${_esc(c.name)}</option>`).join("");
-    fillLoginStudents_();
+    document.getElementById("loginAccountInput").value = "";
     document.getElementById("studentLoginPwdInput").value = "";
     document.getElementById("studentLoginError").classList.add("hidden");
     openModal("studentLoginModal");

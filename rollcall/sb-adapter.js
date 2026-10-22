@@ -330,8 +330,12 @@
     const old = input.id ? all.filter(b => b.id === String(input.id))[0] : null;
     if (input.id && !old) return { error: 'BOOKING_NOT_FOUND' };
     if (!isAdmin) {
-      if (old && old.startDate < today) return { error: 'BOOKING_STARTED' };
-      if (start < today) return { error: 'BOOKING_PAST' };
+      if (old && old.startDate < today) {
+        // 已經開始、還沒結束的預約：老師可以調整結束日期與原因（開始日期與學生不能改，過去的紀錄要保留）
+        if (old.endDate < today) return { error: 'BOOKING_STARTED' };
+        if (start !== old.startDate || st.id !== old.studentId) return { error: 'BOOKING_STARTED' };
+        if (end < today) return { error: 'BOOKING_PAST' };
+      } else if (start < today) return { error: 'BOOKING_PAST' };
     } else if (start < dateStrDaysAgo_(RETENTION_DAYS)) return { error: 'BOOKING_TOO_OLD' };
     if ((Date.parse(end) - Date.parse(start)) / 86400000 + 1 > BOOKING_MAX_DAYS) return { error: 'BOOKING_TOO_LONG' };
     const clash = all.filter(b => b.studentId === st.id && (!old || b.id !== old.id) && b.startDate <= end && start <= b.endDate)[0];
@@ -777,9 +781,15 @@
   A.deleteBooking = async body => {
     const s = await requireSession();
     const kind = bkKind_(body.kind);
-    const r = dbErr(await sb.from(bkTable_(kind)).select('id,start_date').eq('id', String(body.id || '')).maybeSingle());
+    const r = dbErr(await sb.from(bkTable_(kind)).select('id,start_date,end_date').eq('id', String(body.id || '')).maybeSingle());
     if (!r) return fail('BOOKING_NOT_FOUND');
-    if (s.role !== 'admin' && r.start_date < today_()) return fail('BOOKING_STARTED');
+    const today = today_();
+    if (s.role !== 'admin' && r.start_date < today) {
+      // 已經開始的預約：老師「取消」＝ 從今天起不再請假（結束日期改為昨天），之前已過去的日子照舊保留
+      if (r.end_date < today) return fail('BOOKING_STARTED');
+      dbErr(await sb.from(bkTable_(kind)).update({ end_date: prevDate_(today), updated_by: s.name, updated_at: nowIso() }).eq('id', r.id));
+      return { ok: true, truncated: true };
+    }
     dbErr(await sb.from(bkTable_(kind)).delete().eq('id', r.id));
     return { ok: true };
   };

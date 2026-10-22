@@ -166,7 +166,7 @@ const SUPABASE_URL = "https://jflnvliefjfxhfwjzqdi.supabase.co";      // 測試�
 const SUPABASE_KEY = "sb_publishable_ZVT08ujYz6NmsowKmqBNng_JxBJaVmb";
 const EMAIL_DOMAIN = "@school.test";
 const LEARNING_URL = "../index.html";                                   // 學習通（測試版）
-const ROLLCALL_URL = "https://mcdull60555.github.io/jixiang2026-rollcall/"; // 雲點名（目前仍是試算表版）
+const ROLLCALL_URL = "../rollcall/";                                    // 雲點名（測試版，接 Supabase）
 
 // 和學習通共用同一份登入狀態（同網域、同分頁的 sessionStorage），點進學習通不用再登入一次
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
@@ -281,13 +281,14 @@ function shareWithLearning(session, me) {
     if (me.role === "student") sessionStorage.setItem("loggedInStudentId", me.student_id);
     else sessionStorage.removeItem("loggedInStudentId");
     sessionStorage.setItem("lastActivityTime", String(Date.now()));
+    sessionStorage.setItem("jx-me", JSON.stringify({ role: me.role, name: me.role === "student" ? (me.name || "") : (me.display_name || me.login_id) }));
   } catch (_) { /* 忽略 */ }
 }
 
 async function logout() {
   busy(true);
   try { await sb.auth.signOut({ scope: "local" }); } catch (_) { /* 忽略 */ }
-  ["authToken", "isTeacherLoggedIn", "loggedInStudentId", "lastActivityTime"].forEach(k => { try { sessionStorage.removeItem(k); } catch (_) {} });
+  ["authToken", "isTeacherLoggedIn", "loggedInStudentId", "lastActivityTime", "jx-me"].forEach(k => { try { sessionStorage.removeItem(k); } catch (_) {} });
   busy(false);
   showLogin();
 }
@@ -301,7 +302,7 @@ const ICONS = {
   accounts: '<svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>'
 };
 const CARDS = {
-  rollcall: { title: "雲點名", en: "JX CloudCheck", desc: "點名、預約請假與進班、連續請假、點名日設定", href: ROLLCALL_URL, cta: "進入雲點名", note: "目前仍是試算表版，需要另外登入；搬家完成後會改成免登入", bg: "#DBEAFE", fg: "#0F4FB8" },
+  rollcall: { title: "雲點名", en: "JX CloudCheck", desc: "點名、預約請假與進班、連續請假、點名日設定", href: ROLLCALL_URL, cta: "進入雲點名", bg: "#DBEAFE", fg: "#0F4FB8" },
   learning: { title: "學習通", en: "JX Learning", desc: "進度管理、作業派發、送出審核、學習成長、電子聯絡簿", href: LEARNING_URL, cta: "進入學習通", bg: "#E0EAFF", fg: "#1D4ED8" },
   learningFamily: { title: "學習通", en: "JX Learning", desc: "今日作業、送出審核、電子聯絡簿", href: LEARNING_URL, cta: "進入學習通", bg: "#E0EAFF", fg: "#1D4ED8" },
   roster: { title: "學生名冊", en: "Student Roster", desc: "學生資料、帳號密碼、聯絡電話、可使用的系統", tag: "建置中", bg: "#FEF3C7", fg: "#92400E" },
@@ -364,7 +365,11 @@ $("acctInput").addEventListener("input", e => { e.target.value = e.target.value.
   const last = parseInt(sessionStorage.getItem("lastActivityTime") || "0", 10);
   if (last && Date.now() - last > 60 * 60 * 1000) { await logout(); return; }
   const me = await loadMe().catch(() => null);
-  if (me) { sessionStorage.setItem("lastActivityTime", String(Date.now())); showPortal(me); }
+  if (me) {
+    const { data: s } = await sb.auth.getSession();
+    if (s && s.session) shareWithLearning(s.session, me);
+    showPortal(me);
+  }
   else showLogin();
 })();
 </script>

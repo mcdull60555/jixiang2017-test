@@ -450,7 +450,8 @@
   A.listTeachers = async () => {
     await requireSession('admin');
     const list = await teacherRows_();
-    list.sort((a, b) => String(a.login_id).localeCompare(String(b.login_id)));
+    // 順序和學務雲帳號管理、登入選單相同（sort_order）
+    list.sort((a, b) => (a.sort_order ?? 1e9) - (b.sort_order ?? 1e9) || String(a.login_id).localeCompare(String(b.login_id)));
     return { ok: true, nextUsername: nextTeacherUsername_(list),
       teachers: list.map(t => ({ id: t.id, username: t.login_id, name: t.display_name || t.login_id, active: true })) };
   };

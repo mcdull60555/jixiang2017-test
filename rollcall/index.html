@@ -1093,15 +1093,26 @@ function clearSession() {
   loadLoginAccounts();
 }
 
+// 學務雲：登出後回到學務雲入口（登入畫面），msg 會顯示在入口的登入卡片上
+const PORTAL_URL = 'https://mcdull60555.github.io/jixiang-educloud/';
+let _leaving = false;
+async function goPortal(msg) {
+  if (_leaving) return;
+  _leaving = true;
+  try { await RCSB.call({ action: 'logout', token: STATE.token }); } catch (e) { /* 忽略 */ }
+  try { sessionStorage.setItem('jx-notice', msg || ''); } catch (e) { /* 忽略 */ }
+  clearSession();
+  location.replace(PORTAL_URL);
+}
 function fireLogout() {
   if (!STATE.token) return;
   try { RCSB.call({ action: 'logout', token: STATE.token }).catch(() => {}); } catch (e) {}
 }
 async function doLogout() {
   if (SAVE.queue.size) { try { await flushMarks(); } catch (e) {} }   // 先把還沒存的點名存好
-  fireLogout(); clearSession();
+  await goPortal('');
 }
-function forceLogout(msg) { fireLogout(); clearSession(); toast(msg, true); }
+function forceLogout(msg) { goPortal(msg); }
 
 let lastActivitySaved = 0;
 ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'].forEach(ev =>
@@ -2999,7 +3010,7 @@ $('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') do
       await enterApp();
       ok = true;
     } catch (e) {
-      if (e.message !== 'AUTH_EXPIRED' && STATE.token) { toast('無法恢復登入，請重新登入', true); clearSession(); }
+      if (e.message !== 'AUTH_EXPIRED' && STATE.token) goPortal('無法恢復登入，請重新登入');
     } finally { busyEnd(ok, '已恢復登入'); }
     return;
   }

@@ -2728,25 +2728,26 @@ function initIdleChecker() {
     }, 10000);
 }
 
-function clearAuthAndLogout(message, reloadPublic = true) {
+// 學務雲：登出後回到學務雲入口（登入畫面），message 會顯示在入口的登入卡片上
+const PORTAL_URL = "https://mcdull60555.github.io/jixiang-educloud/";
+let _leavingToPortal = false;
+async function goPortal_(message) {
+    if (_leavingToPortal) return;
+    _leavingToPortal = true;
+    try { showBusy_("登出中…"); } catch (_) { /* 忽略 */ }
+    try { await sb.auth.signOut({ scope: "local" }); } catch (_) { /* 忽略 */ }
+    ["authToken", "isTeacherLoggedIn", "loggedInStudentId", "lastActivityTime", "jx-me"].forEach(k => { try { sessionStorage.removeItem(k); } catch (_) {} });
+    try { sessionStorage.setItem("jx-notice", message || ""); } catch (_) { /* 忽略 */ }
+    location.replace(PORTAL_URL);
+}
+
+function clearAuthAndLogout(message) {
     window._dataVersion = null;
-    const tokenToRevoke = authToken;
     isTeacherLoggedIn = false;
     loggedInStudentId = null;
     authToken = null;
     currentRole = "student";
-    sessionStorage.removeItem("isTeacherLoggedIn");
-    sessionStorage.removeItem("loggedInStudentId");
-    sessionStorage.removeItem("authToken");
-    sessionStorage.removeItem("lastActivityTime");
-    if (tokenToRevoke) {
-        gasPost_("logout", { token: tokenToRevoke }).catch(() => {}); // 通知後端失效即可，失敗也不影響本機登出
-    }
-    if (message) alert(message);
-    renderRoleView();
-    // 登出後換回「登入選單用」的公開資料：否則學生登入後 appData 只剩自己，下次登入就看不到其他人，
-    // 老師登出後畫面上也不該還留著完整資料
-    if (reloadPublic) loadDataFromSheets();
+    goPortal_(message);   // 學務雲：一律回到入口重新登入（signOut 會讓這組登入失效）
 }
 
 function handleRoleSwitch() {
@@ -2886,16 +2887,10 @@ function logout() {
 
 function logoutStudent() {
     // 老師「以學生身分預覽」時也會呼叫這支，那種情況下 token 其實是老師的，不能清掉。
-    if (!isTeacherLoggedIn) {
-        const tokenToRevoke = authToken;
-        authToken = null;
-        if (tokenToRevoke) gasPost_("logout", { token: tokenToRevoke }).catch(() => {});
-    }
-    const wasTeacherPreview = isTeacherLoggedIn;
-    loggedInStudentId = null;
+    if (!isTeacherLoggedIn) { goPortal_(""); return; }   // 學務雲：學生・家長登出後回到入口
+    loggedInStudentId = null;   // 老師預覽學生：只是回到老師畫面
     saveAuthState();
     renderRoleView();
-    if (!wasTeacherPreview) loadDataFromSheets(); // 學生登出：把學生名單換回完整公開名單
 }
 
 function renderRoleView() {

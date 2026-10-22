@@ -3,6 +3,14 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+<script>
+    // 學務雲：一律從學務雲登入，沒登入就轉到學務雲登入頁（登入後會自動回到這裡），不在這裡顯示任何帳號或名單
+    (function () {
+        var ok = false;
+        try { ok = !!sessionStorage.getItem("jx-auth"); } catch (e) { ok = false; }
+        if (!ok) location.replace("https://mcdull60555.github.io/jixiang-educloud/?next=learning");
+    })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <!-- PWA 手機全螢幕與 Web App 支援 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1590,7 +1598,7 @@ async function sbGetPublic_() {
         students: [],
         classes: sbCheck_(cl, "讀取班級失敗").map(c => ({ id: c.id, name: c.name })),
         classStudents: [],
-        teachers: sbCheck_(tc, "讀取老師名單失敗").map(r => ({ loginId: r.login_id, name: r.display_name, classId: r.class_id || "", className: r.class_name || "" }))
+        teachers: tc.error ? [] : (tc.data || []).map(r => ({ loginId: r.login_id, name: r.display_name, classId: r.class_id || "", className: r.class_name || "" }))
     };
 }
 

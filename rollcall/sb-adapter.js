@@ -412,7 +412,7 @@
 
   A.listLoginAccounts = async () => {
     const r = await sbAnon.rpc('list_teachers');
-    const teachers = (dbErr(r) || []).map(t => ({ username: t.login_id, name: t.display_name || t.login_id, role: 'teacher' }));
+    const teachers = (r.error ? [] : (r.data || [])).map(t => ({ username: t.login_id, name: t.display_name || t.login_id, role: 'teacher' }));
     return { ok: true, accounts: [{ username: 'admin', name: '管理員', role: 'admin' }].concat(teachers) };
   };
 

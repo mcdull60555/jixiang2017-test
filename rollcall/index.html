@@ -2,6 +2,14 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
+<script>
+    // 學務雲：一律從學務雲登入，沒登入就轉到學務雲登入頁（登入後會自動回到這裡），不在這裡顯示任何帳號或名單
+    (function () {
+        var ok = false;
+        try { var me = JSON.parse(sessionStorage.getItem("jx-me") || "null"); ok = !!sessionStorage.getItem("jx-auth") && !!me && (me.role === "admin" || me.role === "teacher"); } catch (e) { ok = false; }
+        if (!ok) location.replace("https://mcdull60555.github.io/jixiang-educloud/?next=rollcall");
+    })();
+    </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>【學務雲測試版】基翔雲點名｜基翔文理補習班</title>
 <meta name="description" content="基翔雲點名 JX CloudCheck：基翔文理補習班的學生點名系統。點名更輕鬆，出勤一手掌握。">

@@ -2720,7 +2720,7 @@ function saveAuthState() {
 
 function initIdleChecker() {
     const now = Date.now();
-    if (now - lastActivityTime > IDLE_TIMEOUT_MS) {
+    if ((isTeacherLoggedIn || loggedInStudentId || authToken) && now - lastActivityTime > IDLE_TIMEOUT_MS) {
         clearAuthAndLogout("登入已超過 60 分鐘閒置，已自動登出。");
     }
 
@@ -2751,12 +2751,14 @@ async function goPortal_(message) {
 }
 
 function clearAuthAndLogout(message) {
+    const wasLoggedIn = !!(isTeacherLoggedIn || loggedInStudentId || authToken);
     window._dataVersion = null;
     isTeacherLoggedIn = false;
     loggedInStudentId = null;
     authToken = null;
     currentRole = "student";
-    goPortal_(message);   // 學務雲：一律回到入口重新登入（signOut 會讓這組登入失效）
+    if (!wasLoggedIn) { renderRoleView(); return; }   // 本來就沒登入：不用跳轉
+    goPortal_(message);   // 學務雲：回到入口重新登入（signOut 會讓這組登入失效）
 }
 
 function handleRoleSwitch() {

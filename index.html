@@ -4,6 +4,10 @@
 <head>
     <meta charset="UTF-8">
 <script>
+  // 學務雲：沒有從學務雲登入（或已登出）就直接回到學務雲登入頁，不顯示這裡的登入畫面與任何名單
+  try { if (!sessionStorage.getItem("jx-auth")) location.replace("https://mcdull60555.github.io/jixiang-educloud/"); } catch (e) { /* 忽略 */ }
+</script>
+<script>
     // 學務雲：一律從學務雲登入，沒登入就轉到學務雲登入頁（登入後會自動回到這裡），不在這裡顯示任何帳號或名單
     (function () {
         var ok = false;

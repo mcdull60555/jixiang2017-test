@@ -3,6 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <script>
+  // 學務雲：沒有從學務雲登入（或已登出）就直接回到學務雲登入頁，不顯示這裡的登入畫面與任何名單
+  // 雲點名只給管理員、老師；學生・家長的登入狀態進來也一樣回學務雲
+  try {
+    var jxMe = JSON.parse(sessionStorage.getItem("jx-me") || "null");
+    if (!sessionStorage.getItem("jx-auth") || !jxMe || (jxMe.role !== "admin" && jxMe.role !== "teacher")) location.replace("https://mcdull60555.github.io/jixiang-educloud/");
+  } catch (e) { location.replace("https://mcdull60555.github.io/jixiang-educloud/"); }
+</script>
+<script>
     // 學務雲：一律從學務雲登入，沒登入就轉到學務雲登入頁（登入後會自動回到這裡），不在這裡顯示任何帳號或名單
     (function () {
         var ok = false;

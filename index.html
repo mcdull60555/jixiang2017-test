@@ -2665,9 +2665,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     <!-- ==================== JavaScript 核心互動邏輯 ==================== -->
     <script>
-let currentRole = "student";
 let loggedInStudentId = sessionStorage.getItem("loggedInStudentId") || null;
 let isTeacherLoggedIn = sessionStorage.getItem("isTeacherLoggedIn") === "true";
+// 學務雲：老師、管理員登入後進來直接是老師端（管理員再由 renderRoleViewHook_ 切到管理端）；
+// 只有老師正在「以學生身分預覽」時才停在學生畫面
+let currentRole = (isTeacherLoggedIn && !loggedInStudentId) ? "teacher" : "student";
 let authToken = sessionStorage.getItem("authToken") || null; // 登入後端拿到的憑證，所有讀寫請求都要帶著它
 let lastActivityTime = parseInt(sessionStorage.getItem("lastActivityTime") || Date.now(), 10);
 const IDLE_TIMEOUT_MS = 60 * 60 * 1000;

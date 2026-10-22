@@ -1501,6 +1501,7 @@ function sbErr_(error, fallback) {
     const msg = (error && error.message) || fallback || "資料庫錯誤";
     const e = new Error(msg);
     const code = error && error.code;
+    if (/director read only/.test(msg)) { const r = new Error("主任瀏覽模式：這個班級不是你負責的，只能查看，不能修改。"); r.readOnly = true; return r; }
     if (code === "42501" || code === "PGRST301" || code === "PGRST303" || (error && error.status === 401) || /JWT/i.test(msg)) e.unauthorized = true;
     if (!error || error.status === 0 || /Failed to fetch|NetworkError|Load failed/i.test(msg)) e.retryable = true;
     return e;
@@ -1599,7 +1600,7 @@ async function sbProfile_() {
     const session = sess && sess.session;
     if (!session) throw sbUnauthorized_();
     if (_sbProfile && _sbProfile.id === session.user.id) return _sbProfile;
-    const res = await sb.from("profiles").select("id,role,student_id,class_id,login_id,display_name,allowed_grades").eq("id", session.user.id).maybeSingle();
+    const res = await sb.from("profiles").select("id,role,student_id,class_id,login_id,display_name,allowed_grades,title").eq("id", session.user.id).maybeSingle();
     if (res.error) throw sbErr_(res.error, "讀取身分失敗");
     if (!res.data) throw sbUnauthorized_();
     _sbProfile = res.data;
@@ -1645,9 +1646,11 @@ async function sbFetchView_(profile) {
     if (profile.role === "admin") return sbFetchAdminView_(profile);
     const isTeacher = profile.role === "teacher";
     let myClassIds = [];
+    const isDirector = isTeacher && profile.title === "主任";   // 主任：可切到任何班級瀏覽，只有自己負責的班可以修改
     if (isTeacher) {
         myClassIds = await sbTeacherClassIds_(profile);
-        if ((!profile.class_id || !myClassIds.includes(profile.class_id)) && myClassIds.length) {
+        const needSwitch = isDirector ? !profile.class_id : (!profile.class_id || !myClassIds.includes(profile.class_id));
+        if (needSwitch && myClassIds.length) {
             const sw = await sb.rpc("teacher_switch_class", { p_class: myClassIds[0] });
             if (!sw.error) { _sbProfile = null; profile = await sbProfile_(); }
         }
@@ -1686,7 +1689,10 @@ async function sbFetchView_(profile) {
     _sbCache = { uid: profile.id, tasks: view.tasks, log: isTeacher ? sbLogRowsSafe_(logRes) : null };
     const myClass = view.classes.find(c => c.id === profile.class_id);
     view.me = { role: profile.role, loginId: profile.login_id || "", name: profile.display_name || "", classId: profile.class_id || "", className: myClass ? myClass.name : "", allowedGrades: Array.isArray(profile.allowed_grades) ? profile.allowed_grades : [],
-                myClasses: isTeacher ? view.classes.filter(c => myClassIds.includes(c.id)) : [] };
+                title: profile.title || "老師",
+                ownClassIds: isTeacher ? myClassIds : [],
+                readOnly: !!(isDirector && profile.class_id && !myClassIds.includes(profile.class_id)),
+                myClasses: isTeacher ? (isDirector ? view.classes : view.classes.filter(c => myClassIds.includes(c.id))) : [] };
     if (isTeacher) {
         const cr = await sb.from("class_requests").select("id,teacher_id,class_name,note,status,created_at,handled_at").eq("teacher_id", profile.id).order("created_at", { ascending: false }).limit(20);
         view.me.classRequests = cr.error ? null : (cr.data || []).map(sbMapClassReq_);
@@ -2193,6 +2199,11 @@ async function sbBackup_() {
 /* 畫面程式唯一的後端出入口（名稱沿用 gasPost_，其他程式碼不用改） */
 async function gasPost_(action, bodyObj) {
     const body = bodyObj || {};
+    // 主任瀏覽別班：不送出任何修改，並重新載入畫面把剛才的變更還原
+    if ((action === "save" || action === "patch" || action === "addExisting") && window.appData && window.appData.me && window.appData.me.readOnly) {
+        setTimeout(() => { try { refreshFullData_(); } catch (_) {} }, 300);
+        return { status: "error", message: "主任瀏覽模式：這個班級不是你負責的，只能查看，不能修改。" };
+    }
     switch (action) {
         case "login": return sbLogin_(body);
         case "data": return sbData_(body);
@@ -5788,13 +5799,21 @@ function renderClassSwitcher_() {
     bar.classList.remove("hidden");
     const mine = me.myClasses || [];
     const pending = (me.classRequests || []).filter(r => r.status === "pending").length;
+    const isDirector = me.title === "主任";
+    const own = me.ownClassIds || [];
+    const opt = c => `<option value="${_esc(c.id)}" ${c.id === me.classId ? "selected" : ""}>${_esc(c.name)}</option>`;
     const cur = mine.length > 1
         ? `<select id="classSwitchSelect" onchange="switchTeacherClass_(this.value)" class="flex-1 min-w-0 border border-slate-300 rounded-lg px-2 py-1.5 font-bold text-indigo-700">
-            ${mine.map(c => `<option value="${_esc(c.id)}" ${c.id === me.classId ? "selected" : ""}>${_esc(c.name)}</option>`).join("")}</select>`
+            ${isDirector
+                ? `<optgroup label="我負責的班級">${mine.filter(c => own.includes(c.id)).map(opt).join("")}</optgroup><optgroup label="其他班級（只能瀏覽）">${mine.filter(c => !own.includes(c.id)).map(opt).join("")}</optgroup>`
+                : mine.map(opt).join("")}</select>`
         : `<span class="flex-1 min-w-0 truncate font-bold text-indigo-700">${_esc(me.className || "尚未分配班級")}</span>`;
     bar.innerHTML = `<i class="fa-solid fa-people-roof text-indigo-500"></i><span class="font-bold text-slate-600 whitespace-nowrap">目前班級</span>${cur}
         <button onclick="openRequestClass_()" class="shrink-0 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg px-3 py-1.5 text-xs sm:text-sm whitespace-nowrap">
-            <i class="fa-solid fa-plus mr-1"></i>申請新增班級${pending ? `<span class="ml-1 bg-amber-500 text-white rounded-full px-1.5">${pending}</span>` : ""}</button>`;
+            <i class="fa-solid fa-plus mr-1"></i>申請新增班級${pending ? `<span class="ml-1 bg-amber-500 text-white rounded-full px-1.5">${pending}</span>` : ""}</button>`
+        + (me.readOnly ? `<div class="w-full flex items-center gap-2 bg-amber-50 border border-amber-300 text-amber-800 rounded-lg px-3 py-2 font-bold"><i class="fa-solid fa-eye"></i>瀏覽模式：這是其他老師負責的班級，只能查看，不能派發、審核或修改</div>` : "");
+    bar.classList.toggle("border-amber-300", !!me.readOnly);
+    document.body.classList.toggle("jx-readonly", !!me.readOnly);
 }
 const _reqStatus_ = s => s === "done" ? '<span class="text-emerald-600 font-bold">已建立</span>' : s === "rejected" ? '<span class="text-slate-400 font-bold">未處理</span>' : '<span class="text-amber-600 font-bold">等待管理者處理</span>';
 function openRequestClass_() {

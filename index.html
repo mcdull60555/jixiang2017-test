@@ -570,12 +570,7 @@
                         <button onclick="openAddExistingModal_()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm px-3 py-2 rounded-lg font-bold transition flex items-center">
                             <i class="fa-solid fa-user-check mr-1"></i> 加入現有學生
                         </button>
-                        <button onclick="openBatchAddStudentModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm px-3 py-2 rounded-lg font-bold transition flex items-center">
-                            <i class="fa-solid fa-users-line mr-1"></i> 批次新增學生
-                        </button>
-                        <button onclick="openAddStudentModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm px-3 py-2 rounded-lg font-bold transition flex items-center">
-                            <i class="fa-solid fa-user-plus mr-1"></i> 單筆新增學生
-                        </button>
+                        <span class="text-[11px] text-slate-400" title="新增學生請由管理員到「學生名冊」建立">新增／刪除學生請到「學生名冊」</span>
                     </div>
                 </div>
 
@@ -2004,7 +1999,7 @@ async function sbSave_(body) {
     const srvStudents = new Map(sbCheck_(stRes, "讀取學生失敗").map(r => [r.id, r]));
     const srvTaskMap = new Map(srvTasks.map(r => [r.id, r]));
 
-    if (data.students.length === 0 && srvStudents.size > 0) {
+    if (false) {
         return { status: "error", message: "為避免誤刪，不能一次把所有學生都刪掉。請保留至少一位學生，或到 Supabase 後台處理。" };
     }
 
@@ -2026,24 +2021,19 @@ async function sbSave_(body) {
     // 年級、科目是全校共用，只有管理者能改；老師端這裡一律不寫入
 
     // ---- 學生：新增（含登入帳號）、修改資料、改密碼 ----
-    const wantStudentIds = new Set(data.students.map(s => s.id));
+    // 學習通不新增、不刪除學生（由學生名冊管理）；只修改既有學生，且只處理資料庫裡已有的學生
+    const wantStudentIds = new Set(data.students.map(s => s.id).filter(id => srvStudents.has(id)));
     const newStudents = [], pwdRows = [], updRows = [];
     data.students.forEach(s => {
         const pwd = (typeof s.pwd === "string" || typeof s.pwd === "number") ? String(s.pwd).trim() : "";
         const old = srvStudents.get(s.id);
-        if (!old) {
-            newStudents.push({ id: s.id, name: s.name, school: s.school, grade: s.grade, className: sbStr_(s.className), avatar: sbStr_(s.avatar), pwd: pwd });
-            return;
-        }
+        if (!old) return;   // 不新增學生
         if (old.name !== s.name || old.school !== s.school || old.grade !== s.grade ||
             sbStr_(old.class_name) !== sbStr_(s.className) || sbStr_(old.avatar) !== sbStr_(s.avatar)) {
             updRows.push({ id: s.id, patch: { name: s.name, school: s.school, grade: s.grade, class_name: sbStr_(s.className), avatar: sbStr_(s.avatar) } });
         }
         if (pwd) pwdRows.push({ id: s.id, pwd: pwd });
     });
-    for (let i = 0; i < newStudents.length; i += 200) {
-        sbDo_(await sb.rpc("teacher_create_students", { p_rows: newStudents.slice(i, i + 200) }), "新增學生失敗");
-    }
     for (const u of updRows) {
         sbDo_(await sb.from("students").update(u.patch).eq("id", u.id), "學生資料儲存失敗");
     }
@@ -2079,11 +2069,7 @@ async function sbSave_(body) {
     }
 
     // ---- 刪除學生、年級、科目 ----
-    const delStudents = [];
-    srvStudents.forEach((_, id) => { if (!wantStudentIds.has(id)) delStudents.push(id); });
-    for (let i = 0; i < delStudents.length; i += 500) {
-        sbDo_(await sb.rpc("teacher_delete_students", { p_ids: delStudents.slice(i, i + 500) }), "刪除學生失敗");
-    }
+    // （學生不在這裡刪除；老師端只會看到自己班的學生，沒傳回來的不代表要刪）
     const wantGradeSet = new Set(wantGrades), wantSubjectSet = new Set(wantSubjects);
 
     // ---- 老師密碼（有填才改）----
@@ -4712,7 +4698,6 @@ function renderStudentsCards() {
                     <span>派發總項：${stTasks.length} | 已完成：${completedCount}</span>
                     <div class="flex space-x-2">
                         <button onclick="openEditStudentModal('${s.id}')" class="text-indigo-600 font-bold hover:underline">編輯</button>
-                        <button onclick="deleteStudent('${s.id}')" class="text-rose-600 font-bold hover:underline">刪除</button>
                     </div>
                 </div>
 
@@ -4760,6 +4745,7 @@ function toggleSelectAllStudents(checked) {
 }
 
 function openAddStudentModal() {
+    alert("學習通不能新增學生，請到「學生名冊」新增。"); return;
     document.getElementById("studentModalTitle").innerText = "新增學生資料";
     document.getElementById("editStudentId").value = "";
     document.getElementById("studentNameInput").value = "";
@@ -4790,6 +4776,9 @@ function openEditStudentModal(id) {
 
     const gradeSelect = document.getElementById("studentGradeInput");
     gradeSelect.innerHTML = teacherGrades_().map(g => `<option value="${escHtml_(g)}">${escHtml_(g)}</option>`).join('');
+    if (student.grade && ![...gradeSelect.options].some(o => o.value === student.grade)) {
+        gradeSelect.insertAdjacentHTML("afterbegin", `<option value="${escHtml_(student.grade)}">${escHtml_(student.grade)}</option>`);   // 名冊的年級不在學習通年級表時也保留
+    }
     gradeSelect.value = student.grade;
     renderAvatarPicker_(student.avatar || gradeAvatar_(student.grade));
 
@@ -4813,8 +4802,8 @@ async function saveStudentRaw_() {
         alert("請完整填寫學生姓名與學校！");
         return;
     }
-    if (!id && !pwd) {
-        alert("新增學生請設定 4 位數登入密碼！");
+    if (!id) {
+        alert("學習通不能新增學生，請到「學生名冊」新增。");
         return;
     }
     if (pwd && (pwd.length !== 4 || isNaN(pwd))) {
@@ -4888,6 +4877,7 @@ async function unifyGradeAvatars() {
 }
 
 async function deleteStudent(id) {
+    alert("學習通不能刪除學生，請到「學生名冊」處理。"); return;
     if (!confirm("確定要刪除這位學生嗎？其所有的作業與考卷紀錄將一併移除。")) return;
     window.appData.students = window.appData.students.filter(s => s.id !== id);
     window.appData.tasks = window.appData.tasks.filter(t => t.studentId !== id);
@@ -4896,6 +4886,7 @@ async function deleteStudent(id) {
 }
 
 function openBatchAddStudentModal() {
+    alert("學習通不能新增學生，請到「學生名冊」新增。"); return;
     document.getElementById("batchStudentSchoolInput").value = "";
     document.getElementById("batchStudentNamesInput").value = "";
 

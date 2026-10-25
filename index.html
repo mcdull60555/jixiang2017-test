@@ -1610,6 +1610,10 @@ async function sbProfile_() {
     const res = await sb.from("profiles").select("id,role,student_id,class_id,login_id,display_name,allowed_grades,title").eq("id", session.user.id).maybeSingle();
     if (res.error) throw sbErr_(res.error, "讀取身分失敗");
     if (!res.data) throw sbUnauthorized_();
+    if (res.data.role === "student" && res.data.student_id) {   // 學生帳號是在學就有（家長端看學費單）；學習通要另外開通
+        const ln = await sb.from("students").select("learning_enabled").eq("id", res.data.student_id).maybeSingle();
+        if (!ln.error && ln.data && ln.data.learning_enabled === false) throw sbErr_({}, "這位學生尚未開通學習通（學費單請從基翔學務雲入口查看）");
+    }
     _sbProfile = res.data;
     return _sbProfile;
 }

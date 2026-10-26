@@ -104,8 +104,8 @@
         <label class="field">學生帳號
           <input id="acctInput" type="text" maxlength="8" autocomplete="username" autocapitalize="characters" spellcheck="false" placeholder="例如 JX115001">
         </label>
-        <label class="field">4 位數密碼
-          <input id="pinInput" type="password" maxlength="4" inputmode="numeric" autocomplete="current-password" placeholder="••••">
+        <label class="field">密碼
+          <input id="pinInput" type="password" maxlength="64" autocomplete="current-password" placeholder="••••">
         </label>
         <p class="hint">學生帳號由補習班提供；忘記帳號或密碼請洽櫃台</p>
       </div>
@@ -210,7 +210,7 @@ async function doLogin(e) {
     const acct = $("acctInput").value.trim().toUpperCase();
     pin = $("pinInput").value;
     if (!/^JX[0-9]{6}$/.test(acct)) return showError("請輸入學生帳號，例如 JX115001");
-    if (!/^[0-9]{4}$/.test(pin)) return showError("請輸入 4 位數密碼");
+    if (!pin) return showError("請輸入密碼");
     email = acct.toLowerCase() + EMAIL_DOMAIN;
     want = ["student"];
   } else {

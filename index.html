@@ -244,7 +244,7 @@
             <h3 class="font-bold text-slate-800">我的管理者密碼</h3>
             <div class="flex gap-2 text-sm">
                 <div class="relative flex-1 min-w-0">
-                    <input id="admMyPin" type="password" autocomplete="new-password" placeholder="新密碼（4～64 字元）" class="border border-slate-300 rounded-lg pl-2 pr-9 py-1.5 w-full min-w-0">
+                    <input id="admMyPin" type="password" autocomplete="new-password" placeholder="新密碼（6 碼以上，含英文和數字）" class="border border-slate-300 rounded-lg pl-2 pr-9 py-1.5 w-full min-w-0">
                     <button type="button" onclick="togglePwVis_('admMyPin', this)" class="absolute inset-y-0 right-0 px-2.5 text-slate-500 hover:text-slate-700" title="顯示密碼" aria-label="顯示密碼"><i class="fa-solid fa-eye"></i></button>
                 </div>
                 <button onclick="adminChangeMyPin_()" class="bg-indigo-600 text-white font-bold rounded-lg px-3 py-1.5 whitespace-nowrap shrink-0">修改</button>
@@ -564,7 +564,7 @@
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-200 pb-3">
                     <div>
                         <h3 class="font-bold text-slate-800 text-base sm:text-lg">學生名冊管理</h3>
-                        <p class="text-xs text-slate-500">維護學生學校、年級班級資訊與 4 位數登入密碼</p>
+                        <p class="text-xs text-slate-500">維護學生學校、年級班級資訊與登入密碼</p>
                     </div>
                     <div class="flex items-center space-x-2">
                         <button onclick="openAddExistingModal_()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm px-3 py-2 rounded-lg font-bold transition flex items-center">
@@ -597,8 +597,8 @@
                             <button onclick="batchChangeGradeModal()" class="whitespace-nowrap justify-center bg-amber-500 hover:bg-amber-600 text-white font-bold px-2.5 py-1.5 rounded-lg transition flex items-center">
                                 <i class="fa-solid fa-arrow-right-arrow-left mr-1"></i> 變更選取年級
                             </button>
-                            <button onclick="resetSelectedStudentPwdsToDefault()" title="勾選學生後，把登入密碼改成預設密碼 0000" class="whitespace-nowrap justify-center bg-slate-600 hover:bg-slate-700 text-white font-bold px-2.5 py-1.5 rounded-lg transition flex items-center">
-                                <i class="fa-solid fa-key mr-1"></i> 預設密碼 <span class="ml-1 text-[10px] font-normal opacity-80">(0000)</span>
+                            <button onclick="resetSelectedStudentPwdsToDefault()" title="勾選學生後，把登入密碼各自換成新的預設密碼（6 碼英數字）" class="whitespace-nowrap justify-center bg-slate-600 hover:bg-slate-700 text-white font-bold px-2.5 py-1.5 rounded-lg transition flex items-center">
+                                <i class="fa-solid fa-key mr-1"></i> 預設密碼 <span class="ml-1 text-[10px] font-normal opacity-80">(6碼英數字)</span>
                             </button>
                             <button onclick="unifyGradeAvatars()" title="把所有學生的頭像統一成各年級的對照頭像" class="whitespace-nowrap justify-center bg-teal-600 hover:bg-teal-700 text-white font-bold px-2.5 py-1.5 rounded-lg transition flex items-center">
                                 <i class="fa-solid fa-face-smile mr-1"></i> 統一年級頭像
@@ -731,7 +731,7 @@
                     選擇學生並登入
                 </button>
                 <h2 class="text-lg sm:text-xl font-bold text-slate-800">請先選擇學生並驗證登入</h2>
-                <p class="text-xs text-slate-500">家長與學生請選擇姓名並輸入 4 位數密碼登入檢視個人進度。</p>
+                <p class="text-xs text-slate-500">家長與學生請選擇姓名並輸入密碼登入檢視個人進度。</p>
             </div>
 
             <div id="studentDashboard" class="hidden space-y-4 sm:space-y-6">
@@ -989,7 +989,7 @@
             </div>
             <div id="teacherSelectWrap"><select id="teacherLoginSelect" class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold"></select></div>
             <div>
-                <input type="password" id="teacherPwdInput" placeholder="請輸入4位以上密碼" class="w-full text-center tracking-widest text-lg font-bold border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <input type="password" id="teacherPwdInput" placeholder="請輸入密碼" class="w-full text-center tracking-widest text-lg font-bold border border-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 <p id="teacherPwdError" class="text-xs text-rose-500 text-center mt-1 hidden">密碼錯誤，請重新輸入</p>
             </div>
             <div class="text-center"><a href="#" id="teacherAdminLink" onclick="toggleAdminLogin_();return false;" class="text-xs text-indigo-500 hover:underline">管理者登入</a></div>
@@ -1008,7 +1008,7 @@
                     <i class="fa-solid fa-users-rectangle"></i>
                 </div>
                 <h3 class="text-base sm:text-lg font-bold text-slate-800">學生 / 家長驗證登入</h3>
-                <p class="text-xs text-slate-500">輸入學生帳號與 4 位數密碼</p>
+                <p class="text-xs text-slate-500">輸入學生帳號與密碼</p>
             </div>
             <div class="space-y-3">
                 <div>
@@ -1017,8 +1017,8 @@
                     <p class="text-[11px] text-slate-400 text-center mt-1">帳號由補習班提供，忘記請洽櫃台</p>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">4 位數個人密碼</label>
-                    <input type="password" id="studentLoginPwdInput" maxlength="4" inputmode="numeric" autocomplete="current-password" placeholder="請輸入4位數字" class="w-full text-center tracking-widest text-lg font-bold border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">個人密碼</label>
+                    <input type="password" id="studentLoginPwdInput" maxlength="64" autocapitalize="off" autocomplete="current-password" placeholder="請輸入密碼" class="w-full text-center tracking-widest text-lg font-bold border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <p id="studentLoginError" class="text-xs text-rose-500 text-center mt-1 hidden">密碼不正確！</p>
                 </div>
             </div>
@@ -1081,7 +1081,7 @@
                 <input id="admNewTName" placeholder="王老師" class="border border-slate-300 rounded-lg px-3 py-2 w-full"></label>
             <div class="space-y-1"><span class="text-xs font-bold text-slate-600">負責班級（可複選）</span>
                 <div id="admNewTClass" class="border border-slate-300 rounded-lg divide-y max-h-40 overflow-y-auto"></div></div>
-            <label class="block space-y-1"><span class="text-xs font-bold text-slate-600">登入密碼（4～64 字元）</span>
+            <label class="block space-y-1"><span class="text-xs font-bold text-slate-600">登入密碼（6 碼以上，含英文和數字）</span>
                 <span class="relative block">
                     <input id="admNewTPin" type="password" autocomplete="new-password" onkeydown="if(event.key==='Enter') adminCreateTeacher_()" class="border border-slate-300 rounded-lg pl-3 pr-10 py-2 w-full">
                     <button type="button" onclick="togglePwVis_('admNewTPin', this)" class="absolute inset-y-0 right-0 px-3 text-slate-500 hover:text-slate-700" title="顯示密碼" aria-label="顯示密碼"><i class="fa-solid fa-eye"></i></button>
@@ -1127,7 +1127,7 @@
         <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-3 border border-slate-200">
             <h3 id="resetPinTitle" class="font-bold text-slate-800">重設老師密碼</h3>
             <div class="relative">
-                <input id="resetPinInput" type="password" autocomplete="new-password" placeholder="新密碼（4～64 字元）" onkeydown="if(event.key==='Enter') saveResetPin_()" class="border border-slate-300 rounded-lg pl-3 pr-10 py-2 w-full text-sm">
+                <input id="resetPinInput" type="password" autocomplete="new-password" placeholder="新密碼（6 碼以上，含英文和數字）" onkeydown="if(event.key==='Enter') saveResetPin_()" class="border border-slate-300 rounded-lg pl-3 pr-10 py-2 w-full text-sm">
                 <button type="button" onclick="togglePwVis_('resetPinInput', this)" class="absolute inset-y-0 right-0 px-3 text-slate-500 hover:text-slate-700" title="顯示密碼" aria-label="顯示密碼"><i class="fa-solid fa-eye"></i></button>
             </div>
             <p id="resetPinError" class="hidden text-xs text-rose-600 font-bold"></p>
@@ -1253,9 +1253,9 @@
                     <input type="text" id="studentClassInput" placeholder="例如：3年2班、座號、備註" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">4 位數個人密碼 *</label>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">個人密碼（6 碼以上，含英文和數字）*</label>
                     <div class="flex space-x-2">
-                        <input type="text" id="studentPwdInput" maxlength="4" placeholder="4位數字" class="w-full text-center font-mono font-bold border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none">
+                        <input type="text" id="studentPwdInput" maxlength="64" autocapitalize="off" spellcheck="false" placeholder="6碼以上，含英文和數字" class="w-full text-center font-mono font-bold border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none">
                         <button type="button" onclick="generateRandomPwdInput()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-xl font-bold shrink-0">隨機產生</button>
                     </div>
                 </div>
@@ -1288,7 +1288,7 @@
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1">學生姓名列表 (每行一位學生) *</label>
                     <textarea id="batchStudentNamesInput" rows="5" placeholder="王小明&#10;林小花&#10;張阿豪" class="w-full border border-slate-300 rounded-xl p-3 text-sm focus:outline-none custom-scrollbar"></textarea>
-                    <p class="text-[11px] text-slate-400 mt-1">每位批次新增的學生預設登入密碼都是 0000，之後可以在「學生管理 → 編輯」修改。</p>
+                    <p class="text-[11px] text-slate-400 mt-1">每位批次新增的學生都會各自產生一組 6 碼英數字的預設登入密碼，之後可以在「學生管理 → 編輯」查看或修改。</p>
                 </div>
             </div>
             <div class="flex space-x-2 pt-2">
@@ -1414,16 +1414,16 @@
         <div class="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-xl space-y-4 border border-slate-200">
             <div class="text-center">
                 <h3 class="text-base sm:text-lg font-bold text-slate-800">修改個人登入密碼</h3>
-                <p class="text-xs text-slate-500">設定新的 4 位數密碼</p>
+                <p class="text-xs text-slate-500">設定新的密碼（6 碼以上，要有英文和數字，分大小寫）</p>
             </div>
             <div class="space-y-3">
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">新 4 位數密碼</label>
-                    <input type="password" id="studentNewPwd1" maxlength="4" placeholder="4位數字" class="w-full text-center font-mono text-lg font-bold border border-slate-300 rounded-xl px-3 py-2 focus:outline-none">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">新密碼</label>
+                    <input type="password" id="studentNewPwd1" maxlength="64" autocapitalize="off" placeholder="6碼以上，含英文和數字" class="w-full text-center font-mono text-lg font-bold border border-slate-300 rounded-xl px-3 py-2 focus:outline-none">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1">再次確認新密碼</label>
-                    <input type="password" id="studentNewPwd2" maxlength="4" placeholder="再次輸入4位數字" class="w-full text-center font-mono text-lg font-bold border border-slate-300 rounded-xl px-3 py-2 focus:outline-none">
+                    <input type="password" id="studentNewPwd2" maxlength="64" autocapitalize="off" placeholder="再次輸入新密碼" class="w-full text-center font-mono text-lg font-bold border border-slate-300 rounded-xl px-3 py-2 focus:outline-none">
                 </div>
             </div>
             <div class="flex space-x-2 pt-2">
@@ -1456,6 +1456,20 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
     <script>window.supabase || document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>')</script>
     <script>
+        // ===== 統一密碼規則（與學務雲、資料庫一致）：6～64 碼、要有英文和數字、分大小寫、不能有空白 =====
+        const PIN_RULE = /^(?=.*[A-Za-z])(?=.*\d)\S{6,64}$/;
+        const PIN_RULE_MSG = "密碼要 6 碼以上，且必須同時有英文字母和數字（分大小寫、不能有空白）";
+        const PIN_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"; // 避開 0 O o 1 I l，共 56 個字
+        function newDefaultPwd_() {
+            for (;;) {
+                let out = "";
+                while (out.length < 6) {
+                    const b = crypto.getRandomValues(new Uint8Array(12));
+                    for (const v of b) { if (out.length < 6 && v < 224) out += PIN_CHARS[v % 56]; } // 224 = 56 × 4，避免偏誤
+                }
+                if (/[A-Za-z]/.test(out) && /\d/.test(out)) return out;
+            }
+        }
 /* ==================================================================
  * 基翔小學通 Supabase 測試版：轉接層
  *
@@ -1836,7 +1850,7 @@ async function sbLogout_(body) {
 async function sbChangePwd_(body) {
     const newPwd = String(body.newPwd == null ? "" : body.newPwd);
     const pf = await sbProfile_();
-    if (pf.role === "student" && !/^\d{4}$/.test(newPwd)) return { status: "error", message: "新密碼必須是 4 位數字" };
+    if (!PIN_RULE.test(newPwd)) return { status: "error", message: PIN_RULE_MSG };
     const { error } = await sb.rpc("change_my_pin", { p_pin: newPwd });
     if (error) throw sbErr_(error, "密碼更新失敗");
     return { status: "success", message: "密碼已更新" };
@@ -1983,12 +1997,12 @@ async function sbSave_(body) {
 
     // 先驗證，全部通過才開始寫入（避免寫到一半才發現資料有問題）
     const teacherPwd = typeof data.teacherPwd === "string" ? data.teacherPwd.trim() : "";
-    if (teacherPwd && (teacherPwd.length < 4 || teacherPwd.length > 64)) {
-        return { status: "error", message: "老師密碼長度要 4～64 個字元" };
+    if (teacherPwd && !PIN_RULE.test(teacherPwd)) {
+        return { status: "error", message: "老師" + PIN_RULE_MSG };
     }
     for (const s of data.students) {
         const p = (typeof s.pwd === "string" || typeof s.pwd === "number") ? String(s.pwd).trim() : "";
-        if (p && !/^\d{4}$/.test(p)) return { status: "error", message: "學生「" + (s.name || s.id) + "」的密碼必須是 4 位數字" };
+        if (p && !PIN_RULE.test(p)) return { status: "error", message: "學生「" + (s.name || s.id) + "」的" + PIN_RULE_MSG };
     }
 
     // 讀資料庫現況
@@ -2152,7 +2166,7 @@ async function sbAdminOp_(body) {
         sbDo_(await sb.from("subjects").delete().eq("name", a.name), "刪除科目失敗");
     } else if (op === "changeMyPin") {
         const pin = String(a.pin || "");
-        if (pin.length < 4 || pin.length > 64) return { status: "error", message: "密碼長度要 4～64 個字元" };
+        if (!PIN_RULE.test(pin)) return { status: "error", message: PIN_RULE_MSG };
         const { error } = await sb.rpc("change_my_pin", { p_pin: pin });
         if (error) throw sbErr_(error, "密碼更新失敗");
     } else {
@@ -4582,7 +4596,7 @@ async function confirmBatchEditDispatches() {
     await window.saveData();
 }
 
-const DEFAULT_STUDENT_PWD = "0000"; // 新增學生的預設密碼
+// （舊的固定預設密碼 0000 已取消：現在每位學生各自產生 6 碼英數字預設密碼，見 newDefaultPwd_()）
 
 /* 學生管理排序：年級（依「科目與年級設定」裡的順序，一年級在前）→ 學校 → 班級 → 姓名，全部遞增 */
 // 下拉選單用：學校 學生姓名 年級
@@ -4755,8 +4769,8 @@ function openAddStudentModal() {
     document.getElementById("studentNameInput").value = "";
     document.getElementById("studentSchoolInput").value = "";
     document.getElementById("studentClassInput").value = "";
-    document.getElementById("studentPwdInput").value = DEFAULT_STUDENT_PWD;
-    document.getElementById("studentPwdInput").placeholder = "4位數字";
+    document.getElementById("studentPwdInput").value = newDefaultPwd_();
+    document.getElementById("studentPwdInput").placeholder = "6碼以上，含英文和數字";
 
     const gradeSelect = document.getElementById("studentGradeInput");
     gradeSelect.innerHTML = teacherGrades_().map(g => `<option value="${escHtml_(g)}">${escHtml_(g)}</option>`).join('');
@@ -4776,7 +4790,7 @@ function openEditStudentModal(id) {
     document.getElementById("studentClassInput").value = student.className || "";
     // 老師端看得到目前密碼；舊資料（只有雜湊）還原不了，留空＝不變更
     document.getElementById("studentPwdInput").value = student.pwdPlain || "";
-    document.getElementById("studentPwdInput").placeholder = student.pwdPlain ? "4位數字" : "舊密碼無法還原，留空＝不變更";
+    document.getElementById("studentPwdInput").placeholder = student.pwdPlain ? "6碼以上，含英文和數字" : "舊密碼無法還原，留空＝不變更";
 
     const gradeSelect = document.getElementById("studentGradeInput");
     gradeSelect.innerHTML = teacherGrades_().map(g => `<option value="${escHtml_(g)}">${escHtml_(g)}</option>`).join('');
@@ -4790,7 +4804,7 @@ function openEditStudentModal(id) {
 }
 
 function generateRandomPwdInput() {
-    document.getElementById("studentPwdInput").value = Math.floor(1000 + Math.random() * 9000).toString();
+    document.getElementById("studentPwdInput").value = newDefaultPwd_();
 }
 
 async function saveStudentRaw_() {
@@ -4810,8 +4824,8 @@ async function saveStudentRaw_() {
         alert("學習通不能新增學生，請到「學生名冊」新增。");
         return;
     }
-    if (pwd && (pwd.length !== 4 || isNaN(pwd))) {
-        alert("密碼必須是 4 位數字！");
+    if (pwd && !PIN_RULE.test(pwd)) {
+        alert(PIN_RULE_MSG + "！");
         return;
     }
 
@@ -4851,20 +4865,20 @@ async function saveStudentRaw_() {
     }
 }
 
-// 把「勾選的學生」登入密碼改成預設密碼（0000）
+// 把「勾選的學生」登入密碼改成新的預設密碼（每位各自產生 6 碼英數字）
 async function resetSelectedStudentPwdsToDefault() {
     const list = (window.appData.students || []).filter(st => selectedStudentIds.has(st.id));
     if (!list.length) { alert("請先勾選要改成預設密碼的學生！"); return; }
-    if (!confirm(`確定要把選取的 ${list.length} 位學生的登入密碼改成預設密碼 ${DEFAULT_STUDENT_PWD} 嗎？\n（學生之後可自行改密碼；此動作無法復原）`)) return;
-    list.forEach(st => { st.pwd = DEFAULT_STUDENT_PWD; });
+    if (!confirm(`確定要把選取的 ${list.length} 位學生的登入密碼，各自換成新的預設密碼（6 碼英數字）嗎？\n（每位學生的新密碼不同；舊密碼立刻失效；此動作無法復原）`)) return;
+    list.forEach(st => { st.pwd = newDefaultPwd_(); });
     const ok = await window.saveData();
     list.forEach(st => {
-        if (ok) st.pwdPlain = DEFAULT_STUDENT_PWD;
+        if (ok) st.pwdPlain = st.pwd;
         delete st.pwd;
     });
     if (ok) {
         selectedStudentIds.clear();
-        alert(`已把 ${list.length} 位學生的密碼設為預設密碼 ${DEFAULT_STUDENT_PWD}。`);
+        alert(`已把 ${list.length} 位學生的密碼換成新的預設密碼。\n新密碼可在「學生管理 → 編輯」查看，或到學務雲「學生名冊」印帳密小卡。`);
         window.renderRoleView();
     } else {
         alert("儲存失敗，密碼尚未變更，請稍後再試。");
@@ -4914,7 +4928,7 @@ async function saveBatchStudentsRaw_() {
 
     const created = [];
     names.forEach(name => {
-        const pwd = DEFAULT_STUDENT_PWD;
+        const pwd = newDefaultPwd_();
         const st = {
             id: "s_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
             name,
@@ -4936,7 +4950,7 @@ async function saveBatchStudentsRaw_() {
     });
     if (ok) {
         window.renderRoleView();
-        alert(`已新增 ${created.length} 位學生，預設登入密碼都是 ${DEFAULT_STUDENT_PWD}。\n\n之後可以在「學生管理 → 編輯」修改密碼。`);
+        alert(`已新增 ${created.length} 位學生，每位的預設登入密碼都不同。\n\n可在「學生管理 → 編輯」查看或修改密碼。`);
     }
 }
 
@@ -5233,8 +5247,8 @@ async function saveStudentSelfPwd() {
     const p1 = document.getElementById("studentNewPwd1").value.trim();
     const p2 = document.getElementById("studentNewPwd2").value.trim();
 
-    if (p1.length !== 4 || isNaN(p1)) {
-        alert("請輸入 4 位數純數字密碼！");
+    if (!PIN_RULE.test(p1)) {
+        alert(PIN_RULE_MSG + "！");
         return;
     }
     if (p1 !== p2) {
@@ -6146,7 +6160,7 @@ function adminResetPin_(b) {
 function saveResetPin_() {
     const p = document.getElementById("resetPinInput").value;
     const err = document.getElementById("resetPinError");
-    if (p.length < 4 || p.length > 64) { err.innerText = "密碼長度要 4～64 個字元"; err.classList.remove("hidden"); return; }
+    if (!PIN_RULE.test(p)) { err.innerText = PIN_RULE_MSG; err.classList.remove("hidden"); return; }
     closeModal("resetPinModal");
     adminDo_("setTeacherPin", { id: _resetPinTid, pin: p }, "密碼已重設").then(() => { document.getElementById("resetPinInput").value = ""; togglePwVis_("resetPinInput", null, true); });
 }
